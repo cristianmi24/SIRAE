@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { isDatabaseReady } from "../config/database.js";
+import { ensureDatabase, isDatabaseReady } from "../config/database.js";
 import { AppError } from "../utils/errors.js";
 import { resolveAuthenticatedContext } from "../services/auth-context.js";
 import { Institution, Membership, User } from "../models/index.js";
@@ -73,7 +73,7 @@ authRouter.post("/logout", (request, response) => {
 
 authRouter.get("/me", async (request, response, next) => {
   try {
-    if (!isDatabaseReady()) {
+    if (!isDatabaseReady() && !(await ensureDatabase(2))) {
       response.status(503).json({
         authenticated: false,
         database: "unavailable",

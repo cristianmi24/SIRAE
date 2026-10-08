@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import type { MembershipRole } from "../../../shared/types.js";
-import { isDatabaseReady } from "../config/database.js";
+import { ensureDatabase, isDatabaseReady } from "../config/database.js";
 import { AppError, forbidden, unavailable } from "../utils/errors.js";
 import { resolveAuthenticatedContext, type AuthContext } from "../services/auth-context.js";
 
@@ -11,7 +11,7 @@ export async function requireAuthenticatedContext(
   next: NextFunction,
 ): Promise<void> {
   try {
-    if (!isDatabaseReady()) {
+    if (!isDatabaseReady() && !(await ensureDatabase(2))) {
       throw unavailable("MongoDB no está disponible. Inténtalo nuevamente en unos minutos.");
     }
     request.auth = await resolveAuthenticatedContext(request);

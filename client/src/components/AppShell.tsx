@@ -8,6 +8,7 @@ import { useHotkeys, useOnlineStatus, useTheme } from "../lib/ui-hooks";
 import { CommandPalette, ShortcutsHelp } from "./CommandPalette";
 import { StatusChip } from "./Feedback";
 import { Byline } from "./Byline";
+import { TopProgress } from "./Loading";
 import { adminItems, breadcrumbsFor, home, monitoring, navItemsFor, sections, type NavItem } from "./navigation";
 
 function NavItemLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {
@@ -67,6 +68,7 @@ export function AppShell({ user, children }: { user: AuthUserDto; children: Reac
   });
 
   return <div className="app-shell">
+    <TopProgress />
     <a className="skip-link" href="#contenido">Saltar al contenido</a>
     <aside className="sidebar" aria-label="Navegación principal">
       <Link to="/" className="brand brand-sidebar" aria-label="SIRAE, ir al inicio"><span className="brand-card"><img className="brand-logo" src="/sirae-logo.webp" alt="SIRAE" width={128} height={83} /></span><small>Registro de asistencia educativa</small></Link>

@@ -1,4 +1,5 @@
-import React, { lazy, Suspense } from "react";
+import React, { Suspense } from "react";
+import { lazyPage } from "../lib/lazy-page";
 import { useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 import { CheckCircle2, Eye, EyeOff, GraduationCap, LockKeyhole, Moon, ShieldCheck, Sparkles, Sun, UsersRound } from "lucide-react";
@@ -8,27 +9,29 @@ import type { StudentSelfReportDto } from "../services/api";
 import { useTheme } from "../lib/ui-hooks";
 import { AppShell } from "../components/AppShell";
 import { Byline } from "../components/Byline";
-import { ErrorPanel, LoadingState } from "../components/Feedback";
+import { LoadingState } from "../components/Feedback";
+import { BrandLoader } from "../components/Loading";
 import { api, ApiClientError } from "../services/api";
 
-const DashboardPage = lazy(() => import("../pages/DashboardPage").then((page) => ({ default: page.DashboardPage })));
-const StudentProfilePage = lazy(() => import("../pages/StudentProfilePage").then((page) => ({ default: page.StudentProfilePage })));
-const StudentsPage = lazy(() => import("../pages/StudentsPage").then((page) => ({ default: page.StudentsPage })));
-const AttendancePage = lazy(() => import("../pages/AttendancePage").then((page) => ({ default: page.AttendancePage })));
-const SchedulesPage = lazy(() => import("../pages/SchedulesPage").then((page) => ({ default: page.SchedulesPage })));
-const GradesPage = lazy(() => import("../pages/GradesPage").then((page) => ({ default: page.GradesPage })));
-const ObservationsPage = lazy(() => import("../pages/ObservationsPage").then((page) => ({ default: page.ObservationsPage })));
-const ImportsPage = lazy(() => import("../pages/ImportsPage").then((page) => ({ default: page.ImportsPage })));
-const AnalyticsPage = lazy(() => import("../pages/AnalyticsPage").then((page) => ({ default: page.AnalyticsPage })));
-const ReportsPage = lazy(() => import("../pages/ReportsPage").then((page) => ({ default: page.ReportsPage })));
-const SettingsPage = lazy(() => import("../pages/SettingsPage").then((page) => ({ default: page.SettingsPage })));
-const StudentReportPage = lazy(() => import("../pages/StudentReportPage").then((page) => ({ default: page.StudentReportPage })));
-const CourseGradesReportPage = lazy(() => import("../pages/CourseGradesReportPage").then((page) => ({ default: page.CourseGradesReportPage })));
-const PublicAttendancePage = lazy(() => import("../pages/PublicAttendancePage").then((page) => ({ default: page.PublicAttendancePage })));
-const StudentCodesPage = lazy(() => import("../pages/StudentCodesPage").then((page) => ({ default: page.StudentCodesPage })));
-const LegalPage = lazy(() => import("../pages/LegalPage").then((page) => ({ default: page.LegalPage })));
-const MonitoringPage = lazy(() => import("../pages/MonitoringPage").then((page) => ({ default: page.MonitoringPage })));
-const AuditPage = lazy(() => import("../pages/AuditPage").then((page) => ({ default: page.AuditPage })));
+const DashboardPage = lazyPage(() => import("../pages/DashboardPage").then((page) => ({ default: page.DashboardPage })));
+const StudentProfilePage = lazyPage(() => import("../pages/StudentProfilePage").then((page) => ({ default: page.StudentProfilePage })));
+const StudentsPage = lazyPage(() => import("../pages/StudentsPage").then((page) => ({ default: page.StudentsPage })));
+const AttendancePage = lazyPage(() => import("../pages/AttendancePage").then((page) => ({ default: page.AttendancePage })));
+const SchedulesPage = lazyPage(() => import("../pages/SchedulesPage").then((page) => ({ default: page.SchedulesPage })));
+const GradesPage = lazyPage(() => import("../pages/GradesPage").then((page) => ({ default: page.GradesPage })));
+const ObservationsPage = lazyPage(() => import("../pages/ObservationsPage").then((page) => ({ default: page.ObservationsPage })));
+const ImportsPage = lazyPage(() => import("../pages/ImportsPage").then((page) => ({ default: page.ImportsPage })));
+const AnalyticsPage = lazyPage(() => import("../pages/AnalyticsPage").then((page) => ({ default: page.AnalyticsPage })));
+const ReportsPage = lazyPage(() => import("../pages/ReportsPage").then((page) => ({ default: page.ReportsPage })));
+const SettingsPage = lazyPage(() => import("../pages/SettingsPage").then((page) => ({ default: page.SettingsPage })));
+const StudentReportPage = lazyPage(() => import("../pages/StudentReportPage").then((page) => ({ default: page.StudentReportPage })));
+const CourseGradesReportPage = lazyPage(() => import("../pages/CourseGradesReportPage").then((page) => ({ default: page.CourseGradesReportPage })));
+const PublicAttendancePage = lazyPage(() => import("../pages/PublicAttendancePage").then((page) => ({ default: page.PublicAttendancePage })));
+const StudentCodesPage = lazyPage(() => import("../pages/StudentCodesPage").then((page) => ({ default: page.StudentCodesPage })));
+const LegalPage = lazyPage(() => import("../pages/LegalPage").then((page) => ({ default: page.LegalPage })));
+const MonitoringPage = lazyPage(() => import("../pages/MonitoringPage").then((page) => ({ default: page.MonitoringPage })));
+const NotFoundPage = lazyPage(() => import("../pages/NotFoundPage").then((page) => ({ default: page.NotFoundPage })));
+const AuditPage = lazyPage(() => import("../pages/AuditPage").then((page) => ({ default: page.AuditPage })));
 
 function Brand() {
   return <div className="brand brand-on-light"><img className="brand-logo" src="/sirae-logo.webp" alt="SIRAE" width={128} height={83} /><small className="brand-tagline">Sistema de Identificación y Registro<br />de Asistencia Educativa</small></div>;
@@ -117,14 +120,19 @@ function SignInScreen() {
 }
 
 function AuthenticatedApplication() {
-  const auth = useQuery({ queryKey: ["auth"], queryFn: api.getMe, retry: false });
-  if (auth.isLoading) return <LoadingState label="Verificando acceso seguro…" />;
-  if (auth.error) {
-    const error = auth.error as ApiClientError;
-    return <ErrorPanel title="No fue posible verificar el acceso" detail={error.message} />;
-  }
-  if (auth.data?.database === "unavailable") {
-    return <main className="centered-page"><ErrorPanel title="MongoDB no está disponible" detail={auth.data.message} /></main>;
+  // Reintenta solo: en un arranque en frío o con red inestable el servidor puede tardar en responder.
+  const auth = useQuery({
+    queryKey: ["auth"], queryFn: api.getMe,
+    retry: (count, error) => count < 4 && !(error instanceof ApiClientError && error.status < 500),
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 6000),
+    refetchInterval: (query) => query.state.data?.database === "unavailable" ? 3000 : false,
+  });
+  if (auth.isLoading) return <BrandLoader label="Verificando acceso seguro…" fullScreen />;
+  if (auth.error || auth.data?.database === "unavailable") {
+    return <main className="centered-page connection-screen">
+      <BrandLoader label="Conectando con SIRAE…" fullScreen />
+      <button className="button button-secondary" onClick={() => void auth.refetch()} disabled={auth.isFetching}>{auth.isFetching ? "Reintentando…" : "Reintentar ahora"}</button>
+    </main>;
   }
   if (!auth.data?.authenticated || !auth.data.user) return <SignInScreen />;
 
@@ -154,7 +162,7 @@ function AuthenticatedApplication() {
           <Route path="/reports/courses/:id" element={<CourseGradesReportPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/audit" element={<AuditPage />} />
-          <Route path="*" element={<DashboardPage user={auth.data.user} />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </AppShell>

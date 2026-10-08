@@ -2,14 +2,10 @@ import { AlertCircle, CheckCircle2, Download, Printer, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type { QrDelivery } from "../services/api";
 import { useDialogBehavior } from "../lib/ui-hooks";
+import { BrandLoader } from "./Loading";
 
 export function LoadingState({ label = "Cargando información…" }: { label?: string }) {
-  return (
-    <div className="loading-state" role="status" aria-live="polite">
-      <span className="spinner" aria-hidden="true" />
-      <span>{label}</span>
-    </div>
-  );
+  return <BrandLoader label={label} />;
 }
 
 export function ErrorPanel({ title = "No fue posible cargar la información", detail }: { title?: string; detail?: string }) {
