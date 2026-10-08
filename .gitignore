@@ -1,0 +1,41 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Compilados (Vercel los genera al desplegar)
+dist/
+*.tsbuildinfo
+node_modules/.vite/
+
+# Variables de entorno: NUNCA subir claves ni la conexión a MongoDB
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel
+
+# Pruebas y registros
+coverage/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos temporales
+*.tmp
+*.tmp.*
+tmp/
+
+# Editores y herramientas locales
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.claude/
+*.swp
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
