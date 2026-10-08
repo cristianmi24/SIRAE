@@ -50,7 +50,7 @@ export function AttendancePage() {
   const adjust = useMutation({ mutationFn: (input: { startNow?: boolean; toleranceMinutes: number }) => api.adjustSession(sessionId, input), onSuccess: async (_data, input) => { setTimingIssue(null); setEditingTolerance(false); setMessage({ tone: "success", text: input.startNow ? `Listo: hoy la clase cuenta desde ahora, con ${input.toleranceMinutes} min de tolerancia. El horario semanal no cambió.` : `Tolerancia de hoy: ${input.toleranceMinutes} min.` }); await refreshSessions(); if (input.startNow) void startScanner(); }, onError: fail("No se pudo ajustar la hora de hoy.") });
 
   const handleQr = useCallback(async (payload: string) => {
-    if (!sessionId || !selectedSession || selectedSession.state !== "OPEN" || payload === lastScannedRef.current) return;
+    if (!sessionId || !selectedSession || payload === lastScannedRef.current) return;
     lastScannedRef.current = payload;
     try {
       if (!payload.startsWith(prefix) || payload.length > 160) { setMessage({ tone: "error", text: "Este QR no es un código de estudiante de SIRAE." }); return; }
@@ -86,7 +86,7 @@ export function AttendancePage() {
     const now = Date.now(); const start = new Date(selectedSession.startsAt).getTime(); const end = new Date(selectedSession.endsAt).getTime();
     const isToday = selectedSession.dateKey === dayKeyInZone(context.data.timezone);
     const minutesLate = Math.floor((now - start) / 60000);
-    if (isToday && !selectedSession.adjustedAt) {
+    if (isToday && !selectedSession.adjustedAt && selectedSession.state === "OPEN") {
       if (now > end) { setTodayTolerance(String(tolerance)); setTimingIssue({ kind: "over", minutes: minutesLate }); return; }
       if (now < start - 60000) { setTodayTolerance(String(tolerance)); setTimingIssue({ kind: "early", minutes: Math.ceil((start - now) / 60000) }); return; }
       if (minutesLate > tolerance) { setTodayTolerance(String(tolerance)); setTimingIssue({ kind: "late", minutes: minutesLate }); return; }
@@ -141,12 +141,13 @@ export function AttendancePage() {
           <button role="tab" aria-selected={mode === "code"} className={mode === "code" ? "is-active" : ""} onClick={() => { setMode("code"); stopScanner(); }}>Por código</button>
           <button role="tab" aria-selected={mode === "qr"} className={mode === "qr" ? "is-active" : ""} onClick={() => setMode("qr")}>Escanear QR</button>
         </div>
+        {selectedSession.state === "CLOSED" && mode === "qr" && <p className="notice notice-info">La clase está cerrada: los QR que escanees ahora quedan como <strong>Tarde</strong>.</p>}
         {mode === "code" ? <CodeLinkPanel sessionId={selectedSession.id} open={selectedSession.state === "OPEN"} clock={clock} onMessage={setMessage} /> : <>
         {scannerActive && <CameraIndicator onStop={stopScanner} />}
         <div className="camera-frame"><video ref={scanner.videoRef} muted playsInline hidden={!scannerActive} aria-label="Cámara para escanear códigos QR" />{!scannerActive && <div className="camera-placeholder"><Camera size={30} aria-hidden="true" /><strong>La cámara se enciende cuando la actives</strong><span>El navegador te pedirá permiso.</span></div>}</div>
         {lastScan && <div className={`last-scan status-${(lastScan.status ?? "pending").toLowerCase()}`} aria-live="polite"><strong>{lastScan.name}</strong><span>{lastScan.label}</span><time>{clock(lastScan.at, true)}</time></div>}
         <div className="dialog-actions">
-          {scannerActive ? <button className="button button-secondary" onClick={stopScanner}><CameraOff size={17} /> Detener cámara</button> : <button className="button button-primary" disabled={selectedSession.state !== "OPEN" || Boolean(timingIssue)} onClick={requestScanner}><Camera size={17} /> Activar cámara</button>}
+          {scannerActive ? <button className="button button-secondary" onClick={stopScanner}><CameraOff size={17} /> Detener cámara</button> : <button className="button button-primary" disabled={Boolean(timingIssue)} onClick={requestScanner}><Camera size={17} /> Activar cámara</button>}
           {queued.some((x) => x.sessionId === sessionId) && <button className="button button-ghost" disabled={!navigator.onLine} onClick={() => void Promise.all(queued.filter((x) => x.sessionId === sessionId).map(syncOne))}><RefreshCw size={16} /> Enviar pendientes ({queued.filter((x) => x.sessionId === sessionId).length})</button>}
         </div></>}
       </article>
@@ -156,7 +157,7 @@ export function AttendancePage() {
           <div><h2>Lista del curso</h2>{summary && <div className="summary-pills compact-pills"><span className="pill pill-green">{summary.present} a tiempo</span><span className="pill pill-amber">{summary.late} tarde</span><span className="pill pill-coral">{summary.absent} ausentes</span><span className="pill">{summary.total} total</span></div>}</div>
           {selectedSession.state === "OPEN" && <button className="button button-danger compact-button" onClick={() => { if (window.confirm("¿Cerrar la clase? Quienes no tengan registro quedarán como ausentes.")) closeSession.mutate(); }} disabled={closeSession.isPending}>{closeSession.isPending ? "Cerrando…" : "Cerrar clase"}</button>}
         </div>
-        <p className="helper-text">{selectedSession.state === "CLOSED" ? "Clase cerrada: para corregir un registro escribe el motivo." : "Toca el estado de cada estudiante para marcarlo a mano."}</p>
+        <p className="helper-text">{selectedSession.state === "CLOSED" ? "Clase cerrada: quien llegue ahora se registra como «Tarde» (con QR o tocando «Tarde»). Otras correcciones piden motivo." : "Toca el estado de cada estudiante para marcarlo a mano."}</p>
         {roster.isLoading ? <LoadingState label="Cargando lista…" /> : <RosterList rows={roster.data?.items ?? []} closed={selectedSession.state === "CLOSED"} saving={markMutation.isPending} clock={clock} onMark={(studentId, status, reason) => markMutation.mutate({ studentId, status, reason: reason || undefined })} />}
       </article>
     </div>}

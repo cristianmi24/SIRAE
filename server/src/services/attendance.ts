@@ -10,7 +10,6 @@ export async function scanQr(context: AuthContext, input: { classSessionId: stri
   const session = await ClassSession.findOne({ _id: objectId(input.classSessionId), institutionId: tenantId(context) });
   if (!session) throw new AppError(404, "SESSION_NOT_FOUND", "No se encontró la sesión seleccionada.");
   assertGroupAccess(context, String(session.courseGroupId));
-  if (session.state !== "OPEN" && !input.deviceScannedAt) throw new AppError(409, "SESSION_CLOSED", "La sesión ya está cerrada. Registra la corrección manual con su motivo.");
   const student = await Student.findOne({ institutionId: tenantId(context), qrTokenHash: input.tokenHash.toLowerCase(), active: true });
   if (!student) throw new AppError(404, "QR_NOT_FOUND", "El QR no es válido o el estudiante está inactivo.");
   if (!student.courseGroupId?.equals(session.courseGroupId)) throw new AppError(409, "STUDENT_NOT_IN_GROUP", "El estudiante no está inscrito en el grupo de esta sesión.");
@@ -24,17 +23,26 @@ export async function scanQr(context: AuthContext, input: { classSessionId: stri
         return { duplicate: false, message: `${student.firstName} ${student.lastName} — escaneo offline sincronizado tras el cierre; revisión docente requerida. Hora de sincronización ${serverNow.toISOString()}`, item: { id: String(updated._id), studentId: String(student._id), studentName: `${student.firstName} ${student.lastName}`, status: updated.status, label: statusLabel(updated.status), recordedAt: serverNow.toISOString(), source: updated.source, requiresReview: true } };
       }
     }
+    // Llegó después de cerrar la clase: la ausencia automática pasa a "Tarde" con la hora real.
+    if (!input.deviceScannedAt && first.status === "ABSENT" && first.source === "SESSION_CLOSE") {
+      const updated = await Attendance.findOneAndUpdate({ _id: first._id, source: "SESSION_CLOSE" }, { $set: { status: "LATE", source: "QR", recordedAt: serverNow, requiresReview: false, reason: "Registrado después del cierre de la clase", updatedBy: actorId(context) } }, { new: true });
+      if (updated) {
+        await audit(context, "ATTENDANCE_LATE_AFTER_CLOSE", "Attendance", updated._id, { status: "ABSENT", source: "SESSION_CLOSE" }, { status: "LATE", source: "QR" });
+        return { duplicate: false, message: `${student.firstName} ${student.lastName}: Tarde (después del cierre)`, item: { id: String(updated._id), studentId: String(student._id), studentName: `${student.firstName} ${student.lastName}`, status: "LATE", label: statusLabel("LATE"), recordedAt: serverNow.toISOString(), source: "QR", requiresReview: false } };
+      }
+    }
     const latest = await Attendance.findOne({ institutionId: tenantId(context), classSessionId: session._id, studentId: student._id }) ?? first;
     return { duplicate: true, message: `La asistencia de ${student.firstName} ${student.lastName} ya está registrada.`, item: { studentId: String(student._id), studentName: `${student.firstName} ${student.lastName}`, status: latest.status, label: statusLabel(latest.status), recordedAt: latest.recordedAt?.toISOString(), source: latest.source } };
   }
-  if (!input.deviceScannedAt && !isWithinAttendanceWindow(serverNow, session.startsAt, session.endsAt)) {
-    const beforeStart = serverNow.getTime() < session.startsAt.getTime();
-    throw new AppError(409, beforeStart ? "SESSION_NOT_STARTED" : "ATTENDANCE_WINDOW_CLOSED", beforeStart ? "La clase aún no ha comenzado según el horario. Usa «Empezar desde ahora» si hoy la clase inicia antes." : "Ya pasó la hora de esta clase. Usa «Empezar desde ahora» para tomar asistencia hoy o márcala a mano.");
+  // Antes del inicio no se registra; después del fin de la clase (o con la clase cerrada) cuenta como tarde.
+  if (!input.deviceScannedAt && session.state === "OPEN" && serverNow.getTime() < session.startsAt.getTime()) {
+    throw new AppError(409, "SESSION_NOT_STARTED", "La clase aún no ha comenzado según el horario. Usa «Empezar desde ahora» si hoy la clase inicia antes.");
   }
+  const afterClass = session.state !== "OPEN" || !isWithinAttendanceWindow(serverNow, session.startsAt, session.endsAt);
   const schedule = await Schedule.findOne({ _id: session.scheduleId, institutionId: tenantId(context) });
   if (!schedule) throw new AppError(409, "SCHEDULE_NOT_FOUND", "No se encontró el horario de esta sesión.");
   const punctuality = classifyPunctuality(serverNow, session.startsAt, session.toleranceMinutes ?? schedule.toleranceMinutes);
-  const status = input.deviceScannedAt ? "PENDING_REVIEW" : punctuality;
+  const status = input.deviceScannedAt ? "PENDING_REVIEW" : afterClass ? "LATE" : punctuality;
   try {
     const row = await Attendance.create({ institutionId: tenantId(context), classSessionId: session._id, studentId: student._id, courseGroupId: session.courseGroupId, subjectId: session.subjectId, teacherUserId: session.teacherUserId, status, recordedAt: serverNow, source: input.deviceScannedAt ? "OFFLINE" : "QR", deviceScannedAt: input.deviceScannedAt ? new Date(input.deviceScannedAt) : undefined, requiresReview: Boolean(input.deviceScannedAt), clientEventId: input.clientEventId, updatedBy: actorId(context) });
     await audit(context, "ATTENDANCE_RECORDED", "Attendance", row._id, undefined, { classSessionId: String(session._id), studentId: String(student._id), status }, { source: row.source, requiresReview: row.requiresReview });
@@ -68,8 +76,10 @@ export async function setManualAttendance(context: AuthContext, sessionId: strin
   const student = await Student.findOne({ _id: objectId(input.studentId), institutionId: tenantId(context), active: true, courseGroupId: session.courseGroupId });
   if (!student) throw forbiddenEntity();
   const prior = await Attendance.findOne({ institutionId: tenantId(context), classSessionId: session._id, studentId: student._id }).lean();
-  if (session.state === "CLOSED" && !prior) throw new AppError(409, "SESSION_CLOSED", "No se pueden crear registros nuevos para una sesión cerrada.");
-  if (prior && session.state === "CLOSED" && !input.reason?.trim()) throw new AppError(400, "CORRECTION_REASON_REQUIRED", "La clase ya está cerrada: escribe el motivo de la corrección.");
+  const lateAfterClose = session.state === "CLOSED" && input.status === "LATE" && (!prior || (prior.status === "ABSENT" && prior.source === "SESSION_CLOSE"));
+  if (session.state === "CLOSED" && !prior && !lateAfterClose) throw new AppError(409, "SESSION_CLOSED", "Con la clase cerrada, un registro nuevo solo puede ser «Tarde».");
+  if (prior && session.state === "CLOSED" && !lateAfterClose && !input.reason?.trim()) throw new AppError(400, "CORRECTION_REASON_REQUIRED", "La clase ya está cerrada: escribe el motivo de la corrección.");
+  if (lateAfterClose && !input.reason?.trim()) input = { ...input, reason: "Llegó después del cierre de la clase" };
   const now = new Date();
   const update = { $set: { courseGroupId: session.courseGroupId, subjectId: session.subjectId, teacherUserId: session.teacherUserId, status: input.status, reason: input.reason, recordedAt: input.status === "ABSENT" || input.status === "JUSTIFIED" ? undefined : now, source: "MANUAL", requiresReview: false, updatedBy: actorId(context) }, $unset: { deviceScannedAt: 1, clientEventId: 1 } };
   const row = await Attendance.findOneAndUpdate({ institutionId: tenantId(context), classSessionId: session._id, studentId: student._id }, update, { upsert: true, new: true, setDefaultsOnInsert: true });

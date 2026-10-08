@@ -10,7 +10,7 @@ export default defineConfig({
   // Se preempaquetan al arrancar para que Vite no re-optimice en caliente
   // (eso dejaba el navegador con dos copias de React).
   optimizeDeps: {
-    include: ["react", "react-dom", "react-dom/client", "react-router-dom", "@tanstack/react-query", "lucide-react", "recharts", "qrcode", "@zxing/browser", "idb", "react-hook-form", "@hookform/resolvers/zod", "zod"],
+    include: ["react", "react-dom", "react-dom/client", "react-router-dom", "@tanstack/react-query", "lucide-react", "recharts", "qrcode", "@zxing/browser", "@zxing/library", "idb", "react-hook-form", "@hookform/resolvers/zod", "zod"],
   },
   build: {
     outDir: "../dist/client",
