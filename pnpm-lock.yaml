@@ -23,6 +23,9 @@ importers:
       archiver:
         specifier: ^8.0.0
         version: 8.0.0
+      bson:
+        specifier: 6.10.4
+        version: 6.10.4
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
