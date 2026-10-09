@@ -12,10 +12,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) throw new ApiClientError(response.status, payload?.error?.code || "REQUEST_FAILED", payload?.error?.message || "No fue posible completar la solicitud.", payload?.error?.details);
   return payload as T;
 }
-async function download(path: string): Promise<void> {
-  const response = await fetch(path, { credentials: "include" });
+async function download(path: string, init?: RequestInit): Promise<void> {
+  const headers = new Headers(init?.headers);
+  if (init?.body && !headers.has("content-type")) headers.set("content-type", "application/json");
+  const response = await fetch(path, { ...init, credentials: "include", headers });
   if (!response.ok) { const payload = await response.json().catch(() => undefined); throw new ApiClientError(response.status, payload?.error?.code || "DOWNLOAD_FAILED", payload?.error?.message || "No se pudo descargar el archivo."); }
-  const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = decodeURIComponent(response.headers.get("content-disposition")?.match(/filename="?([^";]+)"?/)?.[1] || "aulanexo-archivo"); document.body.append(a); a.click(); a.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  const blob = await response.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = decodeURIComponent(response.headers.get("content-disposition")?.match(/filename="?([^";]+)"?/)?.[1] || "sirae-documento.pdf"); document.body.append(a); a.click(); a.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 export interface AuthState { authenticated: boolean; database?: "unavailable"; message?: string; user?: AuthUserDto }
 export interface CourseGroupDto { id: string; grade: string; group: string; academicYear: number; label: string }
@@ -70,6 +72,9 @@ async function getAllStudents(status: "ACTIVO" | "TODOS" = "ACTIVO"): Promise<Pa
 }
 const json = (method: string, value?: unknown): RequestInit => ({ method, ...(value === undefined ? {} : { body: JSON.stringify(value) }) });
 export const api = {
+  downloadStudentSelfReport: (input: { code?: string; tokenHash?: string }) => download("/api/public/student-report.pdf", { method: "POST", body: JSON.stringify(input) }),
+  downloadCourseGradesPdf: (courseId: string, periodId?: string) => download(`/api/learning/reports/courses/${courseId}/grades.pdf${periodId ? `?periodId=${periodId}` : ""}`),
+  downloadStudentCodesPdf: (courseId?: string) => download(`/api/students/codes.pdf${courseId ? `?curso=${courseId}` : ""}`),
   getStudentSelfReport: (input: { code?: string; tokenHash?: string }) => request<StudentSelfReportDto>("/api/public/student-report", json("POST", input)),
   getMe: () => request<AuthState>("/api/auth/me"),
   getPlatformOverview: () => request<PlatformOverviewDto>("/api/platform/overview"),

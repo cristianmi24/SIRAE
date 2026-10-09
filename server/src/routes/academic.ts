@@ -14,6 +14,7 @@ import {
   deleteCourseController,
   deleteEverythingController,
   deleteStudentController,
+  studentCodesPdfController,
 } from "../controllers/academic.js";
 import { requireRole } from "../middleware/security.js";
 
@@ -25,6 +26,7 @@ courseGroupRouter.delete("/:id", requireRole("ADMIN"), deleteCourseController);
 export const studentRouter = Router();
 studentRouter.get("/", listStudentsController);
 studentRouter.get("/qr-export", exportStudentQrsController);
+studentRouter.get("/codes.pdf", studentCodesPdfController);
 studentRouter.post("/delete-all", requireRole("ADMIN"), deleteEverythingController);
 studentRouter.post("/", createStudentController);
 studentRouter.get("/:id", getStudentController);

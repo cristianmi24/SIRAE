@@ -47,7 +47,7 @@ function SignInScreen() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [accepted, setAccepted] = React.useState(false);
   const [audience, setAudience] = React.useState<"teacher" | "student">("teacher");
-  const [selfReport, setSelfReport] = React.useState<StudentSelfReportDto | null>(null);
+  const [selfReport, setSelfReport] = React.useState<{ report: StudentSelfReportDto; query: { code?: string; tokenHash?: string } } | null>(null);
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
@@ -59,7 +59,7 @@ function SignInScreen() {
       setError(reason instanceof Error ? reason.message : "No fue posible completar el acceso.");
     }
   };
-  if (selfReport) return <StudentSelfReport report={selfReport} onExit={() => setSelfReport(null)} />;
+  if (selfReport) return <StudentSelfReport report={selfReport.report} query={selfReport.query} onExit={() => setSelfReport(null)} />;
   return (
     <main className="marketing-page">
       <header className="marketing-header">
@@ -89,7 +89,7 @@ function SignInScreen() {
           {audience === "student" ? <>
             <h2>Consulta tu historial.</h2>
             <p>Escribe tu código o escanea tu QR para ver tus notas y asistencias hasta hoy.</p>
-            <StudentLookup onReport={setSelfReport} />
+            <StudentLookup onReport={(report, query) => setSelfReport({ report, query })} />
           </> : <>
           <h2>{mode === "login" ? "Entra a tu aula." : "Crea tu aula."}</h2>
           <p>{mode === "login" ? "Accede con tu correo y clave." : "Cualquier persona puede crear un aula personal. Las instituciones las administra el administrador principal."}</p>

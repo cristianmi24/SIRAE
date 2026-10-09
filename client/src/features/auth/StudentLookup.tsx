@@ -9,10 +9,10 @@ const QR_PREFIX = "aulanexo:student:v1:";
 async function sha256(text: string) { const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)); return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join(""); }
 
 // El estudiante consulta su historial con su código único o escaneando su QR. No necesita cuenta.
-export function StudentLookup({ onReport }: { onReport: (report: StudentSelfReportDto) => void }) {
+export function StudentLookup({ onReport }: { onReport: (report: StudentSelfReportDto, query: { code?: string; tokenHash?: string }) => void }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-  const lookup = useMutation({ mutationFn: api.getStudentSelfReport, onSuccess: onReport, onError: (e) => setError(e instanceof Error ? e.message : "No se pudo consultar.") });
+  const lookup = useMutation({ mutationFn: api.getStudentSelfReport, onSuccess: (report, query) => onReport(report, query), onError: (e) => setError(e instanceof Error ? e.message : "No se pudo consultar.") });
   // La cámara se apaga apenas lee el QR.
   const scanner = useQrScanner((text) => {
     if (!text.startsWith(QR_PREFIX)) { setError("Ese QR no es un código de estudiante de SIRAE."); return; }

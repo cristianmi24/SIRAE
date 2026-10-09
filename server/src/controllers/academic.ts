@@ -16,9 +16,10 @@ import {
 } from "../services/students.js";
 import { AppError } from "../utils/errors.js";
 import { addEdutlanWatermark } from "../utils/pdf-branding.js";
+import { renderCodesPdf } from "../utils/report-pdfs.js";
 import { deleteCourse, deleteEverything, deleteStudent } from "../services/cleanup.js";
 import { studentInputSchema, studentListQuerySchema, studentUpdateSchema } from "../validators/students.js";
-import { Student, AuditLog } from "../models/index.js";
+import { CourseGroup, Student, AuditLog } from "../models/index.js";
 
 function studentIdFromRequest(request: Request): string {
   const value = request.params.id;
@@ -182,4 +183,26 @@ export async function deleteCourseController(request: Request, response: Respons
 }
 export async function deleteEverythingController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try { response.json(await deleteEverything(requireAuthContext(request), String(request.body?.confirmation ?? ""))); } catch (error) { next(error); }
+}
+
+export async function studentCodesPdfController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const context = requireAuthContext(request);
+    const courseId = typeof request.query.curso === "string" && /^[a-f\d]{24}$/i.test(request.query.curso) ? request.query.curso : undefined;
+    if (courseId && context.membership.role !== "ADMIN" && !context.membership.courseGroupIds.includes(courseId)) throw new AppError(403, "FORBIDDEN", "No tienes acceso a ese curso.");
+    const scope = courseId ? { courseGroupId: courseId } : context.membership.role === "ADMIN" ? {} : { courseGroupId: { $in: context.membership.courseGroupIds } };
+    const [students, groups] = await Promise.all([
+      Student.find({ institutionId: context.institution.id, active: true, ...scope }).select("firstName lastName document courseGroupId").lean(),
+      CourseGroup.find({ institutionId: context.institution.id }).select("grade group").lean(),
+    ]);
+    const label = new Map(groups.map((g) => [String(g._id), `${g.grade} ${g.group}`]));
+    const rows = students.map((s) => ({ name: `${s.firstName} ${s.lastName}`, code: s.document, course: s.courseGroupId ? label.get(String(s.courseGroupId)) : undefined }))
+      .sort((a, b) => (a.course ?? "").localeCompare(b.course ?? "") || a.name.localeCompare(b.name));
+    const title = courseId ? `Curso ${label.get(courseId) ?? ""}`.trim() : "Todos los cursos";
+    const pdf = await renderCodesPdf({ institution: context.institution.name, title, rows });
+    response.setHeader("Content-Type", "application/pdf");
+    response.setHeader("Content-Disposition", `attachment; filename="sirae-codigos${courseId ? `-${(label.get(courseId) ?? "curso").replace(/\s+/g, "-")}` : ""}.pdf"`);
+    response.setHeader("Cache-Control", "private, no-store");
+    response.send(pdf);
+  } catch (error) { next(error); }
 }

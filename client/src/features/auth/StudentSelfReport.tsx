@@ -1,14 +1,15 @@
-import { LogOut, Printer } from "lucide-react";
-import type { StudentSelfReportDto } from "../../services/api";
+import { LogOut } from "lucide-react";
+import { api, type StudentSelfReportDto } from "../../services/api";
+import { DownloadPdfButton } from "../../components/DownloadPdfButton";
 import { Byline } from "../../components/Byline";
 import { ReportEmpty, ReportSection, fmtGrade } from "../reports/ReportParts";
 
 // Historial del estudiante en formato de informe: asistencia (días y horas) y notas hasta hoy.
-export function StudentSelfReport({ report: r, onExit }: { report: StudentSelfReportDto; onExit: () => void }) {
+export function StudentSelfReport({ report: r, query, onExit }: { report: StudentSelfReportDto; query: { code?: string; tokenHash?: string }; onExit: () => void }) {
   const a = r.attendance;
   const metrics: [string, string | number][] = [["Clases", a.classes], ["Asistencia", a.percent === undefined ? "Sin datos" : `${a.percent}%`], ["A tiempo", a.present], ["Tarde", a.late], ["No llegó", a.absent], ["Justificadas", a.justified]];
   return <main className="page report-page self-report">
-    <div className="report-toolbar no-print"><button className="button button-secondary" onClick={onExit}><LogOut size={17} /> Salir</button><button className="button button-primary" onClick={() => window.print()}><Printer size={17} /> Descargar PDF</button></div>
+    <div className="report-toolbar no-print"><button className="button button-secondary" onClick={onExit}><LogOut size={17} /> Salir</button><DownloadPdfButton onDownload={() => api.downloadStudentSelfReport(query)} /></div>
     <article className="report-sheet">
       <header className="report-header">
         <div className="report-brand"><img className="report-logo" src="/sirae-logo.webp" alt="SIRAE" width={96} height={63} /><div><strong>{r.institution}</strong><small>Mi historial académico</small></div></div>

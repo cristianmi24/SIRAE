@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import { ensureDeviceId, publicLinkInfo, publicRegister } from "./services/attendance-link.js";
 import { studentSelfReport } from "./services/student-self.js";
+import { renderStudentSelfPdf } from "./utils/report-pdfs.js";
 import { blockPlatformAdminWrites, platformOverview, requirePlatformAdmin } from "./services/platform.js";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -64,6 +65,7 @@ export function createApp(): Express {
   // Registro de asistencia por código: público, sin sesión, solo mientras el docente lo habilite.
   app.get("/api/public/attendance/:token", async (request, response, next) => { try { response.setHeader("Cache-Control", "no-store"); response.json(await publicLinkInfo(request, response, String(request.params.token))); } catch (error) { next(error); } });
   app.post("/api/public/student-report", publicAttendanceLimiter, async (request, response, next) => { try { response.setHeader("Cache-Control", "no-store"); ensureDeviceId(request, response); const body = request.body ?? {}; response.json(await studentSelfReport(request, { code: typeof body.code === "string" ? body.code.slice(0, 32) : undefined, tokenHash: typeof body.tokenHash === "string" ? body.tokenHash.slice(0, 64) : undefined })); } catch (error) { next(error); } });
+  app.post("/api/public/student-report.pdf", publicAttendanceLimiter, async (request, response, next) => { try { ensureDeviceId(request, response); const body = request.body ?? {}; const report = await studentSelfReport(request, { code: typeof body.code === "string" ? body.code.slice(0, 32) : undefined, tokenHash: typeof body.tokenHash === "string" ? body.tokenHash.slice(0, 64) : undefined }); const pdf = await renderStudentSelfPdf(report); response.setHeader("Content-Type", "application/pdf"); response.setHeader("Content-Disposition", `attachment; filename="sirae-historial-${report.student.code}.pdf"`); response.setHeader("Cache-Control", "no-store"); response.send(pdf); } catch (error) { next(error); } });
   app.post("/api/public/attendance/:token", publicAttendanceLimiter, async (request, response, next) => { try { const code = typeof request.body?.code === "string" ? request.body.code.slice(0, 32) : ""; response.json(await publicRegister(request, response, String(request.params.token), code)); } catch (error) { next(error); } });
   app.use("/api/course-groups", requireAuthenticatedContext, blockPlatformAdminWrites, courseGroupRouter);
   app.use("/api/students", requireAuthenticatedContext, blockPlatformAdminWrites, studentRouter);

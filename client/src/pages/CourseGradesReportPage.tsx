@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ErrorPanel, LoadingState } from "../components/Feedback";
 import { Byline } from "../components/Byline";
+import { DownloadPdfButton } from "../components/DownloadPdfButton";
 import { api } from "../services/api";
 import { ReportEmpty, ReportHeader, ReportSection, fmtGrade } from "../features/reports/ReportParts";
 
@@ -20,7 +21,7 @@ export function CourseGradesReportPage() {
   const courseAverage = graded.length ? graded.reduce((sum, s) => sum + s.average!, 0) / graded.length : undefined;
 
   return <div className="page report-page">
-    <div className="report-toolbar no-print"><Link className="back-link" to="/reports"><ArrowLeft size={16} /> Reportes</Link><button className="button button-primary" onClick={() => window.print()}><Printer size={17} /> Descargar PDF</button></div>
+    <div className="report-toolbar no-print"><Link className="back-link" to="/reports"><ArrowLeft size={16} /> Reportes</Link><DownloadPdfButton onDownload={() => api.downloadCourseGradesPdf(id, periodId || undefined)} /></div>
     <article className="report-sheet report-wide">
       <ReportHeader institution={d.institutionName} subtitle="Planilla de notas por curso" generatedAt={d.generatedAt} />
       <div className="report-title">

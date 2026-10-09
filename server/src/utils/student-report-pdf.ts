@@ -1,7 +1,7 @@
-import PDFDocument from "pdfkit";
-import { addEdutlanWatermark, drawSiraeLogo } from "./pdf-branding.js";
+import { C, PdfReport, fmtGrade } from "./pdf-layout.js";
 
 export interface StudentReportPdfData {
+  institutionName?: string;
   studentName: string;
   documentNumber: string;
   groupLabel: string;
@@ -18,49 +18,66 @@ export interface StudentReportPdfData {
     average?: number;
     performance?: string;
     assessments: { periodName: string; subjectName: string; name: string; value: number; feedback?: string }[];
+    categories?: { periodId: string; periodName: string; subjectId: string; subjectName: string; average?: number; weightPercent: number }[];
   };
   observations: { observedAt: Date; type: string; priority: string; status: string; description: string; followUp?: string }[];
 }
 
-export async function renderStudentPdf(data: StudentReportPdfData): Promise<Buffer> {
-  const document = new PDFDocument({ size: "A4", margin: 52, info: { Title: `Informe académico — ${data.studentName}`, Author: "SIRAE" } });
-  const chunks: Buffer[] = [];
-  const finished = new Promise<Buffer>((resolve, reject) => {
-    document.on("data", (chunk: Buffer) => chunks.push(chunk));
-    document.on("end", () => resolve(Buffer.concat(chunks)));
-    document.on("error", reject);
-  });
+const priorityLabel: Record<string, string> = { HIGH: "Prioridad alta", NORMAL: "Prioridad normal", LOW: "Prioridad baja" };
+const statusLabel: Record<string, string> = { OPEN: "Abierta", IN_PROGRESS: "En seguimiento", CLOSED: "Cerrada" };
 
-  addEdutlanWatermark(document);
-  drawSiraeLogo(document, 52, 40, 84);
-  document.fillColor("#1B2559").fontSize(11).font("Helvetica-Bold").text("SIRAE", 150, 52).fontSize(9).font("Helvetica").fillColor("#6b7399").text("Sistema de Identificación y Registro de Asistencia Educativa").text("Informe académico individual");
-  document.x = 52; document.y = 104;
-  document.moveDown(1.2).fillColor("#172033").fontSize(19).font("Helvetica-Bold").text(data.studentName);
-  document.fontSize(10).font("Helvetica").fillColor("#526174").text(`Código: ${data.documentNumber}   |   Curso/grupo: ${data.groupLabel}`);
-  document.text(`Periodo: ${data.periodName}   |   Materia: ${data.subjectName}   |   Rango: ${data.fromKey ?? "Sin inicio"} – ${data.toKey ?? "Sin fin"}   |   Generado: ${new Date().toLocaleString("es-CO", { timeZone: data.timezone })}`);
-  document.moveDown().fillColor("#173F5F").fontSize(13).font("Helvetica-Bold").text("Resumen de asistencia");
-  document.moveDown(.3).fillColor("#263b4b").fontSize(10).font("Helvetica").text(`Sesiones cerradas: ${data.sessionCount}   ·   Asistencia: ${data.attendancePercent === undefined ? "Sin datos" : `${data.attendancePercent}%`}`);
-  document.text(`A tiempo: ${data.attendance.present}   ·   Tardanzas: ${data.attendance.late}   ·   Ausencias: ${data.attendance.absent}   ·   Justificadas: ${data.attendance.justified}   ·   Pendientes de revisión: ${data.attendance.pendingReview}`);
-  document.moveDown().fillColor("#173F5F").fontSize(13).font("Helvetica-Bold").text("Rendimiento por periodo");
-  document.moveDown(.3).fillColor("#263b4b").fontSize(10).font("Helvetica");
-  if (!data.grades.periods.length) document.text("No hay calificaciones registradas en los filtros seleccionados.");
-  for (const item of data.grades.periods) document.text(`${item.name}: promedio ${item.average}${item.performance ? ` (${item.performance})` : ""}, en la escala original del periodo.`);
-  document.moveDown(.4).font("Helvetica-Bold").text(`Promedio del periodo más reciente: ${data.grades.average === undefined ? "Sin datos" : data.grades.average.toFixed(2)}${data.grades.performance ? ` (${data.grades.performance})` : ""}`);
-  document.moveDown(.4).font("Helvetica-Bold").text("Actividades calificadas").font("Helvetica");
-  if (!data.grades.assessments.length) document.text("No hay actividades calificadas para los filtros seleccionados.");
-  for (const item of data.grades.assessments.slice(0, 300)) document.text(`• ${item.periodName} · ${item.subjectName} · ${item.name}: ${item.value}${item.feedback ? ` — ${item.feedback}` : ""}`);
-  if (data.grades.assessments.length > 300) document.text(`Se muestran 300 de ${data.grades.assessments.length} actividades; reduce los filtros para detallar el historial completo.`);
-  document.moveDown().fillColor("#173F5F").fontSize(13).font("Helvetica-Bold").text("Observaciones y seguimiento");
-  if (!data.observations.length) document.moveDown(.3).fillColor("#526174").fontSize(10).font("Helvetica").text("No hay observaciones almacenadas en el rango seleccionado.");
-  for (const item of data.observations) {
-    document.moveDown(.25).fillColor("#263b4b").fontSize(10).font("Helvetica-Bold").text(`${item.observedAt.toLocaleDateString("es-CO", { timeZone: data.timezone })} · ${item.type} · ${item.priority} · ${item.status}`);
-    document.font("Helvetica").text(item.description);
-    if (item.followUp) document.fillColor("#526174").text(`Seguimiento: ${item.followUp}`);
+// Definitiva por periodo y asignatura a partir de las categorías ponderadas.
+function subjectRows(data: StudentReportPdfData) {
+  const map = new Map<string, { period: string; subject: string; total: number; weight: number }>();
+  for (const c of data.grades.categories ?? []) {
+    if (c.average === undefined || !c.weightPercent) continue;
+    const key = `${c.periodId}|${c.subjectId}`;
+    const row = map.get(key) ?? { period: c.periodName, subject: c.subjectName, total: 0, weight: 0 };
+    row.total += c.average * c.weightPercent; row.weight += c.weightPercent; map.set(key, row);
   }
-  document.moveDown().fillColor("#173F5F").fontSize(13).font("Helvetica-Bold").text("Síntesis");
-  const summary = [data.attendancePercent !== undefined ? `asistencia registrada en ${data.attendancePercent}% de las sesiones cerradas` : undefined, data.grades.average !== undefined ? `promedio del periodo más reciente ${data.grades.average.toFixed(2)}${data.grades.performance ? ` (${data.grades.performance})` : ""}` : undefined, data.attendance.pendingReview ? `${data.attendance.pendingReview} captura(s) pendientes de revisión docente` : undefined, data.observations.length ? `${data.observations.length} observación(es) en el rango` : undefined].filter(Boolean).join("; ");
-  document.moveDown(.3).fillColor("#263b4b").fontSize(10).font("Helvetica").text(summary ? `${summary}. Esta síntesis describe únicamente los datos almacenados; una coincidencia entre asistencia y rendimiento no demuestra causalidad.` : "No hay suficientes datos almacenados para generar una síntesis académica.");
-  document.moveDown(2).fillColor("#8996a2").fontSize(8).text("Documento confidencial · Acceso según permisos institucionales de SIRAE.", { align: "center" });
-  document.end();
-  return finished;
+  return [...map.values()].map((row) => ({ period: row.period, subject: row.subject, average: row.total / row.weight }));
+}
+
+function synthesis(d: StudentReportPdfData) {
+  const parts = [
+    d.attendancePercent !== undefined ? `asistió al ${d.attendancePercent}% de las ${d.sessionCount} clases cerradas` : undefined,
+    d.attendance.late ? `con ${d.attendance.late} ${d.attendance.late === 1 ? "llegada tarde" : "llegadas tarde"}` : undefined,
+    d.grades.average !== undefined ? `su promedio del periodo más reciente es ${fmtGrade(d.grades.average)}${d.grades.performance ? ` (${d.grades.performance})` : ""}` : undefined,
+    d.observations.length ? `tiene ${d.observations.length} ${d.observations.length === 1 ? "observación registrada" : "observaciones registradas"}` : undefined,
+  ].filter(Boolean);
+  return parts.length ? `${d.studentName} ${parts.join(", ")}. Esta síntesis describe únicamente los datos registrados; una coincidencia entre asistencia y rendimiento no demuestra que una cause la otra.` : "";
+}
+
+// Informe académico individual en PDF (archivo generado por el servidor).
+export async function renderStudentPdf(data: StudentReportPdfData): Promise<Buffer> {
+  const pdf = new PdfReport({ title: `Informe académico — ${data.studentName}`, subtitle: "Informe académico individual", institution: data.institutionName ?? "SIRAE", timezone: data.timezone, footerNote: `Documento confidencial. Acceso según los permisos de ${data.institutionName ?? "la institución"}.  ·  Código ${data.documentNumber}` });
+  const a = data.attendance;
+  pdf.title("Registro de desempeño estudiantil", data.studentName, [["Código", data.documentNumber], ["Curso", data.groupLabel]]);
+  pdf.filters([["Periodo", data.periodName], ["Asignatura", data.subjectName], ["Rango", `${data.fromKey ?? "Sin inicio"} – ${data.toKey ?? "Sin fin"}`]]);
+
+  pdf.section("01", "Asistencia");
+  pdf.metrics([["Clases cerradas", data.sessionCount], ["Asistencia", data.attendancePercent === undefined ? "Sin datos" : `${data.attendancePercent}%`], ["A tiempo", a.present], ["Tarde", a.late], ["Ausencias", a.absent], ["Justificadas", a.justified], ["Por revisar", a.pendingReview]]);
+  pdf.bar([{ value: a.present, color: C.green }, { value: a.late, color: C.amber }, { value: a.justified, color: C.blue }, { value: a.absent, color: C.coral }, { value: a.pendingReview, color: C.slate }]);
+  if (!(a.present + a.late + a.absent + a.justified + a.pendingReview)) pdf.empty("Aún no hay clases registradas para este filtro.");
+
+  pdf.section("02", "Rendimiento por periodo");
+  const rows = subjectRows(data);
+  if (rows.length) pdf.table([{ label: "Periodo", width: 3 }, { label: "Asignatura", width: 4 }, { label: "Definitiva", width: 2, align: "right" }], rows.map((r) => [r.period, r.subject, { text: fmtGrade(r.average), bold: true }]));
+  else if (data.grades.periods.length) pdf.table([{ label: "Periodo", width: 5 }, { label: "Promedio", width: 2, align: "right" }, { label: "Nivel", width: 2 }], data.grades.periods.map((p) => [p.name, { text: fmtGrade(p.average), bold: true }, p.performance ?? "—"]));
+  else pdf.empty("No hay calificaciones registradas con los filtros elegidos.");
+  pdf.highlight("Promedio del periodo más reciente", data.grades.average === undefined ? "Sin datos" : `${fmtGrade(data.grades.average)}${data.grades.performance ? ` · ${data.grades.performance}` : ""}`);
+
+  pdf.section("03", "Notas registradas");
+  if (data.grades.assessments.length) pdf.table([{ label: "Nota", width: 4 }, { label: "Asignatura", width: 3 }, { label: "Periodo", width: 3 }, { label: "Valor", width: 1.5, align: "right" }],
+    data.grades.assessments.slice(0, 400).map((x) => [{ text: x.name, note: x.feedback }, x.subjectName, x.periodName, { text: fmtGrade(x.value), bold: true }]));
+  else pdf.empty("No hay notas registradas con los filtros elegidos.");
+
+  pdf.section("04", "Observaciones y seguimiento");
+  if (data.observations.length) pdf.timeline(data.observations.map((o) => ({ meta: `${o.observedAt.toLocaleDateString("es-CO", { timeZone: data.timezone, day: "numeric", month: "short", year: "numeric" })} · ${o.type} · ${priorityLabel[o.priority] ?? o.priority} · ${statusLabel[o.status] ?? o.status}`, text: o.description, note: o.followUp ? `Próximo paso: ${o.followUp}` : undefined })));
+  else pdf.empty("No hay observaciones en el rango elegido.");
+
+  pdf.section("05", "Síntesis");
+  const text = synthesis(data);
+  if (text) pdf.paragraph(text, { size: 10.5, color: C.ink }); else pdf.empty("Todavía no hay datos suficientes para escribir una síntesis.");
+  return pdf.finish();
 }

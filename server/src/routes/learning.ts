@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { requireRole } from "../middleware/security.js";
 import { attendanceLinkClose, attendanceLinkGet, attendanceLinkOpen, sessionAdjust, assessmentCreate, assessmentDelete, assessmentUpdate, gradingModeSave, scheduleBreakCreate, scheduleBreakDelete, scheduleBreakList, analyticsRead, analyticsSettingsGet, analyticsSettingsPut, attendanceClose, attendanceMark, attendanceRoster, attendanceScan, auditList, backupDownload, categoryCreate, gradeList, gradeSave, gradeSetup, importConfirm, importPreview, importRemap, importTemplateDownload, institutionSettingsGet, institutionSettingsPut, invitationCreate, invitationRevoke, invitationsList, membershipRevoke, membershipUpdate, membershipsList, observationCreate, observationList, observationUpdateController, periodCreate, periodList, scheduleCreate, scheduleDeactivate, scheduleList, scheduleUpdate, sessionContext, sessionEnsure, sessionList, subjectCreate, subjectList } from "../controllers/learning.js";
-import { courseGradesReportController, studentReportController, studentReportDataController } from "../controllers/reports.js";
+import { courseGradesPdfController, courseGradesReportController, studentReportController, studentReportDataController } from "../controllers/reports.js";
 export const learningRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 20, fieldSize: 128 * 1024 } });
 learningRouter.get("/subjects", subjectList); learningRouter.post("/subjects", requireRole("ADMIN"), subjectCreate);
@@ -20,3 +20,4 @@ learningRouter.get("/audit", requireRole("ADMIN"), auditList); learningRouter.ge
 learningRouter.get("/reports/students/:id.pdf", studentReportController);
 learningRouter.get("/reports/students/:id", studentReportDataController);
 learningRouter.get("/reports/courses/:id/grades", courseGradesReportController);
+learningRouter.get("/reports/courses/:id/grades.pdf", courseGradesPdfController);

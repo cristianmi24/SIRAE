@@ -909,6 +909,9 @@ kbd { display: inline-flex; align-items: center; min-width: 1.6em; justify-conte
 .not-found p { margin: 0; color: var(--muted); line-height: 1.6; }
 .not-found-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; margin-top: .8rem; }
 
+.download-pdf { display: inline-grid; justify-items: end; gap: .25rem; }
+.download-error { color: var(--coral); font-weight: 700; font-size: .8rem; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

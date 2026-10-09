@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ErrorPanel, LoadingState } from "../components/Feedback";
 import { Byline } from "../components/Byline";
+import { DownloadPdfButton } from "../components/DownloadPdfButton";
 import { api, type StudentReportDto } from "../services/api";
 import { ReportHeader, ReportSection, ReportEmpty, fmtGrade } from "../features/reports/ReportParts";
 
@@ -45,7 +46,7 @@ export function StudentReportPage() {
   const parts = [{ v: a.present, c: "var(--green)" }, { v: a.late, c: "var(--amber)" }, { v: a.justified, c: "var(--blue)" }, { v: a.absent, c: "var(--coral)" }, { v: a.pendingReview, c: "var(--slate)" }];
 
   return <div className="page report-page">
-    <div className="report-toolbar no-print"><Link className="back-link" to="/reports"><ArrowLeft size={16} /> Reportes</Link><button className="button button-primary" onClick={() => window.print()}><Printer size={17} /> Descargar PDF</button></div>
+    <div className="report-toolbar no-print"><Link className="back-link" to="/reports"><ArrowLeft size={16} /> Reportes</Link><DownloadPdfButton onDownload={() => api.downloadReport(id, filters)} /></div>
     <article className="report-sheet">
       <ReportHeader institution={d.institutionName} subtitle="Informe académico individual" generatedAt={d.generatedAt} />
       <div className="report-title">

@@ -76,7 +76,7 @@ async function buildStudentReport(context: AuthContext, studentId: string, filte
 }
 export async function createStudentPdf(context: AuthContext, studentId: string, filters: ReportFilter): Promise<Buffer> {
   const report = await buildStudentReport(context, studentId, filters);
-  const buffer = await renderStudentPdf(report.data);
+  const buffer = await renderStudentPdf({ ...report.data, institutionName: context.institution.name });
   await audit(context, "STUDENT_REPORT_GENERATED", "Student", report.studentObjectId, undefined, { periodId: filters.periodId, subjectId: filters.subjectId, from: filters.from, to: filters.to, sessions: report.sessions });
   return buffer;
 }
