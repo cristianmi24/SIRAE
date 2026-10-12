@@ -870,12 +870,43 @@ kbd { display: inline-flex; align-items: center; min-width: 1.6em; justify-conte
 .sidebar-legal { display: block; margin-top: .4rem; padding: 0 .7rem; color: #9aa2d6; font-size: .78rem; font-weight: 700; text-decoration: none; }
 .sidebar-legal:hover { color: #fff; text-decoration: underline; }
 .access-security a { margin-left: .25rem; color: var(--blue); font-weight: 700; }
+.legal-body a { color: var(--blue); font-weight: 700; word-break: break-word; }
+.legal-top { display: inline-flex; align-items: center; gap: .35rem; margin-top: 2rem; font-size: .88rem; text-decoration: none; }
 @media (max-width: 900px) {
-  .legal-layout { grid-template-columns: 1fr; }
-  .legal-toc { position: static; }
-  .legal-body { padding: 1.4rem 1.1rem; }
+  .legal-layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .legal-toc, .legal-body { min-width: 0; }
   .legal-highlights, .legal-grid { grid-template-columns: 1fr; }
-  .legal-table { display: block; overflow-x: auto; }
+}
+/* Celular: índice como barra deslizable fija, texto a todo el ancho y tablas como tarjetas. */
+@media (max-width: 640px) {
+  .legal-page { padding: .6rem 0 2rem; }
+  .legal-header { margin: 0 0 .4rem; padding: 0 1rem; }
+  .legal-header img { width: 84px; }
+  .back-link { font-size: .9rem; }
+  .legal-toc { position: sticky; top: 0; z-index: 5; padding: .55rem 0; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); }
+  .legal-toc p { display: none; }
+  .legal-toc ol { display: flex; gap: .4rem; padding: 0 1rem; overflow-x: auto; list-style: none; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .legal-toc ol::-webkit-scrollbar { display: none; }
+  .legal-toc li { flex: 0 0 auto; }
+  .legal-toc a { display: block; padding: .4rem .8rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: .82rem; white-space: nowrap; }
+  .legal-body { padding: 1.2rem 1rem; border: 0; border-radius: 0; box-shadow: none; font-size: .95rem; line-height: 1.6; }
+  .legal-body h1 { font-size: 1.6rem; line-height: 1.2; }
+  .legal-body h2 { font-size: 1.08rem; line-height: 1.3; }
+  .legal-body section { margin-top: 1.6rem; scroll-margin-top: 3.6rem; }
+  .legal-lead { font-size: 1rem; }
+  .legal-highlights { gap: .55rem; }
+  .legal-highlights div { grid-template-columns: auto 1fr; column-gap: .6rem; padding: .8rem; }
+  .legal-highlights svg { grid-row: span 2; margin-top: .15rem; }
+  .legal-grid div { padding: .7rem; }
+  .legal-table, .legal-table tbody, .legal-table tr, .legal-table td { display: block; width: 100%; }
+  .legal-table thead { display: none; }
+  .legal-table tr { margin-bottom: .6rem; padding: .7rem .8rem; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+  .legal-table td { padding: .2rem 0; border: 0; }
+  .legal-table td::before { content: attr(data-label); display: block; color: var(--muted); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+  .legal-table td:first-child { margin-bottom: .2rem; color: var(--ink); font-weight: 800; font-size: 1rem; }
+  .legal-table td:first-child::before { display: none; }
+  .legal-body h1 + .legal-lead { margin-top: .6rem; }
+  .legal-footer { flex-direction: column; align-items: flex-start; }
 }
 
 /* Indicador de cámara encendida */
