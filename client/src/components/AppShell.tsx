@@ -121,7 +121,7 @@ export function AppShell({ user, children }: { user: AuthUserDto; children: Reac
     </main>
 
     <nav className="mobile-bottom-nav" aria-label="Navegación móvil">
-      {(platformAdmin ? [monitoring, platformInstitutions, platformAdminsItem, platformTeachers, platformWebStats] : [home, ...sections[0]!.items.slice(0, 1), ...sections[1]!.items.slice(0, 1), sections[0]!.items[1]!]).map((item) => { const Icon = item.icon; return <NavLink key={item.to} to={item.to} end className={({ isActive }) => `mobile-nav-link ${isActive ? "is-active" : ""}`}><Icon size={21} aria-hidden="true" /><span>{item.label.split(" ")[0]}</span></NavLink>; })}
+      {(platformAdmin ? [monitoring, platformInstitutions, platformAdminsItem, platformTeachers, platformWebStats] : [home, ...sections[0]!.items.slice(0, 1), ...sections[1]!.items.slice(0, 1), sections[0]!.items[1]!]).map((item) => { const Icon = item.icon; return <NavLink key={item.to} to={item.to} end className={({ isActive }) => `mobile-nav-link ${isActive ? "is-active" : ""}`}><Icon size={21} aria-hidden="true" /><span>{item.short ?? item.label.split(" ")[0]}</span></NavLink>; })}
       <button type="button" className="mobile-nav-link" onClick={() => setDrawerOpen(true)} aria-label="Abrir menú completo"><Menu size={21} aria-hidden="true" /><span>Menú</span></button>
     </nav>
 

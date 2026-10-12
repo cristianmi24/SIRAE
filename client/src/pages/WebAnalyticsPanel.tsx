@@ -50,12 +50,16 @@ export function LineChart({ data, color, label, unit }: { data: { date: string; 
 export function BarList({ title, rows, format = (name: string) => name }: { title: string; rows?: AnalyticsNamed[]; format?: (name: string) => string }) {
   const list = (rows ?? []).filter((row) => row.value > 0); const max = Math.max(1, ...list.map((row) => row.value)); const total = list.reduce((sum, row) => sum + row.value, 0) || 1;
   return <div style={{ minWidth: 0 }}><h3 style={{ fontSize: ".95rem", margin: "0 0 .5rem" }}>{title}</h3>
-    {list.length ? <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: ".4rem" }}>{list.map((row) => <li key={row.name} style={{ fontSize: ".85rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: ".5rem" }}><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{format(row.name)}</span><span className="muted">{number.format(row.value)} · {Math.round(row.value * 100 / total)}%</span></div>
+    {list.length ? <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: ".4rem" }}>{list.map((row) => <li key={row.name} style={{ fontSize: ".85rem", minWidth: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: ".5rem" }}><span title={format(row.name)} style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{format(row.name)}</span><span className="muted" style={{ flex: "none", whiteSpace: "nowrap" }}>{number.format(row.value)} · {Math.round(row.value * 100 / total)}%</span></div>
       <div style={{ height: 6, borderRadius: 3, background: "color-mix(in srgb, currentColor 10%, transparent)" }}><div style={{ width: `${(row.value / max) * 100}%`, height: "100%", borderRadius: 3, background: BLUE }} /></div>
     </li>)}</ul> : <p className="helper-text">Sin datos todavía.</p>}</div>;
 }
 
+// El título de la página trae el nombre largo del sistema; en las listas solo se muestra «SIRAE».
+export const shortTitle = (name: string) => (/sirae/i.test(name) ? "SIRAE" : name.trim() || "(sin título)");
+// Une filas repetidas (por ejemplo varias páginas que acaban llamándose «SIRAE»).
+export const mergeNamed = (rows: AnalyticsNamed[]): AnalyticsNamed[] => [...rows.reduce((map, row) => map.set(row.name, (map.get(row.name) ?? 0) + row.value), new Map<string, number>())].map(([name, value]) => ({ name, value })).sort((x, y) => y.value - x.value);
 export const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "1.2rem" } as const;
 export const subtitle = { fontSize: ".95rem", margin: "1rem 0 .3rem" } as const;
 export const labels = { deviceLabel, channelLabel, visitorLabel };

@@ -1,6 +1,6 @@
 import { Activity, BarChart3, Building2, BookOpenText, CalendarClock, FileBarChart2, Home, NotebookPen, QrCode, Settings2, ShieldCheck, TrendingUp, Users, type LucideIcon } from "lucide-react";
 
-export type NavItem = { to: string; label: string; icon: LucideIcon; tone: string; step?: number; shortcut?: string };
+export type NavItem = { to: string; label: string; icon: LucideIcon; tone: string; step?: number; shortcut?: string; short?: string };
 export type NavSection = { title: string; items: NavItem[] };
 
 // El orden sigue el flujo real: primero se cargan estudiantes (eso crea los cursos),
@@ -8,7 +8,7 @@ export type NavSection = { title: string; items: NavItem[] };
 export const home: NavItem = { to: "/", label: "Inicio", icon: Home, tone: "sun", shortcut: "1" };
 export const monitoring: NavItem = { to: "/", label: "Monitoreo", icon: Activity, tone: "teal", shortcut: "1" };
 export const platformInstitutions: NavItem = { to: "/institutions", label: "Instituciones", icon: Building2, tone: "violet", shortcut: "2" };
-export const platformAdminsItem: NavItem = { to: "/admins", label: "Administradores", icon: ShieldCheck, tone: "pink", shortcut: "3" };
+export const platformAdminsItem: NavItem = { to: "/admins", label: "Administradores", short: "Admins", icon: ShieldCheck, tone: "pink", shortcut: "3" };
 export const platformWebStats: NavItem = { to: "/analytics", label: "Analytics", icon: TrendingUp, tone: "blue", shortcut: "4" };
 export const platformTeachers: NavItem = { to: "/teachers", label: "Docentes", icon: Users, tone: "green", shortcut: "5" };
 export const sections: NavSection[] = [

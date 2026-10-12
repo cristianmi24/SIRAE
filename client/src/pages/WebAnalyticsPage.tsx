@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { NavLink, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, type AnalyticsSummaryDto } from "../services/api";
-import { BarList, Columns, LineChart, Tile, colors, formats, grid, labels, subtitle } from "./WebAnalyticsPanel";
+import { BarList, Columns, LineChart, Tile, colors, formats, grid, labels, mergeNamed, shortTitle, subtitle } from "./WebAnalyticsPanel";
 
 const { number, percent, duration } = formats;
 const PERIODS = [7, 28, 90];
@@ -81,7 +81,7 @@ function LiveSection() {
         data={(data.minutes ?? []).map((m) => ({ key: String(m.minutesAgo), value: m.users, title: m.minutesAgo === 0 ? `Ahora: ${m.users}` : `Hace ${m.minutesAgo} min: ${m.users}` }))}
         tick={(index) => { const ago = 29 - index; return ago === 0 ? "ahora" : ago % 5 === 0 ? `-${ago}m` : null; }} />
       <div style={{ ...grid, marginTop: "1rem" }}>
-        <BarList title="Páginas activas" rows={(data.pages ?? []).map((p) => ({ name: p.name, value: p.users }))} />
+        <BarList title="Páginas activas" rows={mergeNamed((data.pages ?? []).map((p) => ({ name: shortTitle(p.name), value: p.users })))} />
         <BarList title="Países" rows={data.countries} />
         <BarList title="Ciudades" rows={data.cities} />
         <BarList title="Dispositivos" rows={data.devices} format={(name) => labels.deviceLabel[name.toLowerCase()] ?? name} />
