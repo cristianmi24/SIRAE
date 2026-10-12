@@ -40,6 +40,17 @@ SIRAE es una aplicación web para docentes. Permite cargar estudiantes desde Exc
 - **Consulta del estudiante** desde la pantalla de inicio: historial de asistencias (día, clase, hora) y notas.
 - **Perfil de monitoreo** para el administrador: docentes, aulas, estudiantes y la última vez que cada uno usó el sistema. Este perfil no modifica datos.
 
+## Tipos de cuenta y capacidad
+
+| Cuenta | Para quién | Capacidad |
+|---|---|---|
+| **Docente** | Un docente con su propia aula | Hasta 4 cursos |
+| **Institución** | Gestiona varios docentes, sus cursos y estudiantes | Hasta 5 docentes, con máximo 6 cursos cada uno (30 cursos en total) |
+
+Los límites se validan en la interfaz y en el servidor. Para ampliarlos se escribe al administrador: **cpenataandrades2023@gmail.com** (la aplicación permite copiar el correo o abrir el cliente de correo con la solicitud redactada). La institución invita a sus docentes desde *Configuración* y los consulta en la sección *Institución*, que se actualiza sola cada 10 segundos. Un docente invitado que se registra con ese correo entra directamente a la institución.
+
+Una clase cerrada se puede **reabrir** desde *Asistencia*: se conservan los registros, el QR y el enlace vuelven a funcionar y el horario, la tolerancia y el tiempo del enlace no cambian.
+
 ## Registro de asistencia por código: cómo se protege
 
 1. **Credencial única** por estudiante.
@@ -107,7 +118,7 @@ La aplicación queda en `http://localhost:3000`.
 | Comando | Para qué |
 |---|---|
 | `pnpm dev` | Servidor de desarrollo |
-| `pnpm test` | Pruebas |
+| `pnpm test` | Pruebas (las de integración se activan con `TEST_MONGODB_URI=mongodb://127.0.0.1:27017`) |
 | `pnpm check` | Revisión de tipos |
 | `pnpm build` | Compilación de producción |
 

@@ -9,7 +9,7 @@ import { CommandPalette, ShortcutsHelp } from "./CommandPalette";
 import { StatusChip } from "./Feedback";
 import { Byline } from "./Byline";
 import { TopProgress } from "./Loading";
-import { adminItems, breadcrumbsFor, home, monitoring, navItemsFor, sections, type NavItem } from "./navigation";
+import { adminItemsFor, breadcrumbsFor, home, monitoring, navItemsFor, sections, type NavItem } from "./navigation";
 
 function NavItemLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {
   const Icon = item.icon;
@@ -20,13 +20,28 @@ function NavItemLink({ item, onClick }: { item: NavItem; onClick?: () => void })
   </NavLink>;
 }
 
-function NavContent({ platformAdmin, isAdmin, onNavigate }: { platformAdmin: boolean; isAdmin: boolean; onNavigate?: () => void }) {
+function NavContent({ platformAdmin, adminNav, onNavigate }: { platformAdmin: boolean; adminNav: NavItem[]; onNavigate?: () => void }) {
   if (platformAdmin) return <nav className="nav-list" aria-label="Módulos"><NavItemLink item={monitoring} onClick={onNavigate} /></nav>;
   return <nav className="nav-list" aria-label="Módulos">
     <NavItemLink item={home} onClick={onNavigate} />
     {sections.map((section) => <div className="nav-section" key={section.title}><p className="nav-section-title">{section.title}</p>{section.items.map((item) => <NavItemLink key={item.to} item={item} onClick={onNavigate} />)}</div>)}
-    {isAdmin && <div className="nav-section"><p className="nav-section-title">Administración</p>{adminItems.map((item) => <NavItemLink key={item.to} item={item} onClick={onNavigate} />)}</div>}
+    {adminNav.length > 0 && <div className="nav-section"><p className="nav-section-title">Administración</p>{adminNav.map((item) => <NavItemLink key={item.to} item={item} onClick={onNavigate} />)}</div>}
   </nav>;
+}
+
+// Una persona puede tener su aula de docente y además pertenecer a una institución.
+function WorkspaceSwitcher({ user }: { user: AuthUserDto }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const change = useMutation({ mutationFn: api.switchWorkspace, onSuccess: () => { queryClient.clear(); navigate("/"); navigate(0); } });
+  const workspaces = user.workspaces ?? [];
+  if (workspaces.length < 2) return null;
+  return <label className="workspace-switcher"><span>Espacio de trabajo</span>
+    <select value={user.institution?.id ?? ""} disabled={change.isPending} onChange={(event) => change.mutate(event.target.value)}>
+      {workspaces.map((workspace) => <option key={workspace.institutionId} value={workspace.institutionId}>{workspace.name} · {workspace.type === "INSTITUTION" ? (workspace.role === "ADMIN" ? "Institución" : "Docente en institución") : "Mi aula"}</option>)}
+    </select>
+    {change.error && <small role="alert">{change.error instanceof Error ? change.error.message : "No se pudo cambiar."}</small>}
+  </label>;
 }
 
 const quickActions = [
@@ -46,7 +61,7 @@ export function AppShell({ user, children }: { user: AuthUserDto; children: Reac
   const [actionsOpen, setActionsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const isAdmin = user.role === "ADMIN";
+  const adminNav = adminItemsFor(user);
   const platformAdmin = Boolean(user.platformAdmin);
   const items = navItemsFor(user);
   const crumbs = breadcrumbsFor(location.pathname, items);
@@ -73,9 +88,10 @@ export function AppShell({ user, children }: { user: AuthUserDto; children: Reac
     <aside className="sidebar" aria-label="Navegación principal">
       <Link to="/" className="brand brand-sidebar" aria-label="SIRAE, ir al inicio"><span className="brand-card"><img className="brand-logo" src="/sirae-logo.webp" alt="SIRAE" width={128} height={83} /></span><small>Registro de asistencia educativa</small></Link>
       <button type="button" className="palette-trigger" onClick={() => setPaletteOpen(true)} title="Buscar (Ctrl+K)"><Search size={16} aria-hidden="true" /><span>Buscar…</span><kbd>Ctrl K</kbd></button>
-      <NavContent platformAdmin={platformAdmin} isAdmin={isAdmin} />
+      <NavContent platformAdmin={platformAdmin} adminNav={adminNav} />
       <div className="sidebar-footer">
-        <div className="user-card"><span className="avatar" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</span><div><strong>{user.name}</strong>{platformAdmin ? <span className="status-chip status-admin">Monitoreo</span> : <StatusChip status={user.role === "ADMIN" ? "DOCENTE" : user.role || "DOCENTE"} />}</div></div>
+        <div className="user-card"><span className="avatar" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</span><div><strong>{user.name}</strong>{platformAdmin ? <span className="status-chip status-admin">Monitoreo</span> : user.accountType === "INSTITUTION" && user.role === "ADMIN" ? <span className="status-chip status-admin">Institución</span> : <StatusChip status={user.role === "ADMIN" ? "DOCENTE" : user.role || "DOCENTE"} />}</div></div>
+        <WorkspaceSwitcher user={user} />
         <button type="button" className="logout-button" onClick={() => logout.mutate()} disabled={logout.isPending}><LogOut size={17} aria-hidden="true" /><span>{logout.isPending ? "Cerrando…" : "Cerrar sesión"}</span></button>
         <Link to="/legal" className="sidebar-legal">Términos y privacidad</Link>
         <Byline variant="dark" />
@@ -85,7 +101,7 @@ export function AppShell({ user, children }: { user: AuthUserDto; children: Reac
     {drawerOpen && <div className="drawer-backdrop" role="presentation" onClick={() => setDrawerOpen(false)}>
       <aside className="drawer" role="dialog" aria-modal="true" aria-label="Menú" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head"><span className="brand-card"><img className="brand-logo" src="/sirae-logo.webp" alt="SIRAE" width={128} height={83} /></span><button className="icon-only drawer-close" onClick={() => setDrawerOpen(false)} aria-label="Cerrar menú" title="Cerrar menú"><X size={20} /></button></div>
-        <NavContent platformAdmin={platformAdmin} isAdmin={isAdmin} onNavigate={() => setDrawerOpen(false)} />
+        <NavContent platformAdmin={platformAdmin} adminNav={adminNav} onNavigate={() => setDrawerOpen(false)} />
         <div className="sidebar-footer"><div className="user-card"><span className="avatar" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</span><div><strong>{user.name}</strong></div></div><button type="button" className="logout-button" onClick={() => logout.mutate()}><LogOut size={17} aria-hidden="true" /><span>Cerrar sesión</span></button><Byline variant="dark" /></div>
       </aside>
     </div>}

@@ -825,8 +825,6 @@ kbd { display: inline-flex; align-items: center; min-width: 1.6em; justify-conte
 .code-input { text-align: center; font-size: 1.4rem !important; font-weight: 900; letter-spacing: .2em; }
 .lookup-divider { display: flex; align-items: center; gap: .6rem; color: var(--muted); font-size: .8rem; font-weight: 700; }
 .lookup-divider::before, .lookup-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.lookup-camera { overflow: hidden; border-radius: 12px; aspect-ratio: 4 / 3; background: #0b1024; }
-.lookup-camera video { width: 100%; height: 100%; object-fit: cover; }
 .self-report { min-height: 100vh; padding-top: 1.5rem; }
 .self-status { display: inline-flex; padding: .1rem .5rem; border-radius: 999px; font-size: .78rem; font-weight: 800; background: var(--slate-bg); }
 .self-status.status-present { background: var(--green-bg); color: var(--green); }
@@ -881,8 +879,6 @@ kbd { display: inline-flex; align-items: center; min-width: 1.6em; justify-conte
 }
 
 /* Indicador de cámara encendida */
-.camera-indicator { display: flex; align-items: center; gap: .5rem; margin: .4rem 0; padding: .45rem .7rem; border-radius: 10px; background: var(--coral-bg); color: var(--ink); font-size: .86rem; font-weight: 800; }
-.camera-indicator button { margin-left: auto; padding: .2rem .7rem; border: 0; border-radius: 8px; background: var(--coral); color: #fff; font-weight: 800; cursor: pointer; }
 .camera-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--coral); animation: camera-pulse 1.2s ease-in-out infinite; }
 @keyframes camera-pulse { 50% { opacity: .35; } }
 .camera-note { margin: 0; text-align: center; }
@@ -914,4 +910,77 @@ kbd { display: inline-flex; align-items: center; min-width: 1.6em; justify-conte
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ───────── Tipo de cuenta en el registro ───────── */
+.account-type-picker { display: grid; gap: .5rem; margin: 0; padding: 0; border: 0; }
+.account-type-picker legend { margin-bottom: .35rem; font-size: .86rem; font-weight: 800; color: var(--ink-soft); }
+.account-type-option { display: grid; grid-template-columns: auto auto 1fr; gap: .6rem; align-items: start; padding: .7rem .8rem; border: 2px solid var(--line); border-radius: 12px; cursor: pointer; background: var(--surface); }
+.account-type-option input { margin-top: .2rem; accent-color: var(--blue); }
+.account-type-option svg { color: var(--blue); margin-top: .1rem; }
+.account-type-option span { display: grid; gap: .1rem; }
+.account-type-option small { color: var(--muted); font-size: .8rem; line-height: 1.35; }
+.account-type-option.is-selected { border-color: var(--blue); background: var(--blue-bg); }
+.account-type-option:focus-within { outline: 3px solid color-mix(in srgb, var(--blue) 40%, transparent); outline-offset: 2px; }
+
+/* ───────── Límites de capacidad ───────── */
+.notice-warning { background: var(--amber-bg); color: var(--ink); border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); }
+.notice-warning > svg { color: var(--amber); }
+.limit-notice { margin: .6rem 0; }
+.limit-email { font-weight: 800; color: inherit; word-break: break-all; }
+.limit-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
+.limit-actions .button { text-decoration: none; }
+.plan-usage { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: .6rem 0; }
+.plan-type { font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.plan-meter { padding: .2rem .6rem; border-radius: 999px; background: var(--slate-bg); font-size: .82rem; color: var(--ink-soft); }
+.plan-meter strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.plan-meter.is-full { background: var(--amber-bg); }
+.button.is-disabled { opacity: .55; cursor: not-allowed; }
+
+/* ───────── Espacio de trabajo ───────── */
+.workspace-switcher { display: grid; gap: .25rem; margin: .5rem 0; font-size: .78rem; color: #c8cdf3; }
+.workspace-switcher select { width: 100%; padding: .4rem .5rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .08); color: #fff; font: inherit; }
+.workspace-switcher option { color: #111; }
+
+/* ───────── Vista de institución ───────── */
+.page-heading h1 svg { display: inline-block; vertical-align: -3px; color: var(--teal); }
+.heading-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.heading-actions .button { text-decoration: none; }
+.live-status { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; margin: 0 0 1rem; font-size: .84rem; color: var(--muted); }
+.live-status .link-button { display: inline-flex; align-items: center; gap: .25rem; }
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
+.live-dot.is-fetching { animation: camera-pulse 1s ease-in-out infinite; }
+.teacher-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.teacher-card header { display: flex; gap: .7rem; align-items: center; }
+.teacher-card h2 { margin: 0; font-size: 1.05rem; }
+.teacher-card header small { color: var(--muted); font-size: .8rem; word-break: break-word; }
+.teacher-courses { display: grid; gap: .45rem; margin: .5rem 0 0; padding: 0; list-style: none; }
+.teacher-course { display: grid; gap: .15rem; width: 100%; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.teacher-course span { font-size: .82rem; color: var(--ink-soft); }
+.teacher-course .course-last { color: var(--muted); }
+.teacher-course em { font-style: normal; font-weight: 800; }
+.teacher-course em.is-open { color: var(--green); }
+.teacher-course.is-active, .teacher-course:hover { border-color: var(--teal); background: var(--teal-bg); }
+.empty-card { display: grid; justify-items: center; text-align: center; gap: .3rem; margin-bottom: 1.25rem; }
+.empty-card svg { color: var(--teal); }
+
+/* ───────── Lector QR ampliado ───────── */
+.camera-frame { position: relative; }
+.camera-frame.is-expanded { position: fixed; inset: 0; z-index: 90; margin: 0; aspect-ratio: auto; width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; background: #000; }
+.camera-frame.is-expanded video { width: 100%; height: 100%; object-fit: cover; }
+.camera-overlay { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; pointer-events: none; color: #fff; }
+.camera-overlay > * { pointer-events: auto; }
+.camera-topbar { display: flex; align-items: center; gap: .6rem; padding: max(.75rem, env(safe-area-inset-top)) 1rem .75rem; background: linear-gradient(rgba(0, 0, 0, .65), transparent); font-weight: 800; }
+.camera-topbar .camera-dot { flex: 0 0 auto; }
+.camera-topbar > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.camera-icon-button { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .18); color: #fff; cursor: pointer; }
+.camera-icon-button:hover, .camera-icon-button:focus-visible { background: rgba(255, 255, 255, .32); }
+.camera-guide { align-self: center; justify-self: center; width: min(72vw, 62vh, 420px); aspect-ratio: 1; border-radius: 22px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .28); outline: 3px solid rgba(255, 255, 255, .9); pointer-events: none; }
+.camera-bottombar { display: grid; gap: .6rem; padding: .75rem 1rem max(1rem, env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
+.camera-bottombar .last-scan { margin: 0; color: var(--ink); }
+.camera-hint { margin: 0; text-align: center; font-size: .9rem; color: rgba(255, 255, 255, .9); }
+.camera-bottombar .dialog-actions { justify-content: center; margin: 0; }
+body.camera-open { overflow: hidden; }
+@media (min-width: 900px) {
+  .camera-frame.is-expanded video { object-fit: contain; }
 }

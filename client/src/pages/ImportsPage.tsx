@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, FileSpreadsheet, FolderPlus, Upload } from "lucide-react";
 import { api, type ImportPreviewDto } from "../services/api";
+import { isLimitError, RequestError } from "../components/LimitNotice";
 
 const fields = [
   { key: "firstName", label: "Nombre", required: true }, { key: "lastName", label: "Apellido", required: true },
@@ -15,16 +16,18 @@ export function ImportsPage() {
   const [preview, setPreview] = useState<ImportPreviewDto | null>(null);
   const [draftMapping, setDraftMapping] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{ tone: "info" | "success" | "error"; text: string } | null>(null);
-  const fail = (fallback: string) => (error: unknown) => setMessage({ tone: "error", text: error instanceof Error ? error.message : fallback });
-  const upload = useMutation({ mutationFn: () => file ? api.previewImport(file) : Promise.reject(new Error("Elige un archivo primero.")), onSuccess: (data) => { setPreview(data); setDraftMapping(data.mapping); setMessage(null); }, onError: fail("No se pudo leer el archivo.") });
+  const [limitError, setLimitError] = useState<unknown>(null);
+  const fail = (fallback: string) => (error: unknown) => { if (isLimitError(error)) { setLimitError(error); setMessage(null); return; } setMessage({ tone: "error", text: error instanceof Error ? error.message : fallback }); };
+  const upload = useMutation({ mutationFn: () => file ? api.previewImport(file) : Promise.reject(new Error("Elige un archivo primero.")), onSuccess: (data) => { setPreview(data); setDraftMapping(data.mapping); setMessage(null); setLimitError(null); }, onError: fail("No se pudo leer el archivo.") });
   const remap = useMutation({ mutationFn: () => api.remapImport(preview!.id, draftMapping), onSuccess: (data) => { setPreview(data); setDraftMapping(data.mapping); }, onError: fail("No se pudo revisar las columnas.") });
-  const confirm = useMutation({ mutationFn: () => api.confirmImport(preview!.id), onSuccess: async (data) => { setMessage({ tone: "success", text: data.message }); setPreview(null); setDraftMapping({}); setFile(null); await Promise.all(["students", "courseGroups", "groups", "attendanceContext", "analytics"].map((key) => client.invalidateQueries({ queryKey: [key] }))); }, onError: fail("No se pudo cargar a los estudiantes.") });
+  const confirm = useMutation({ mutationFn: () => api.confirmImport(preview!.id), onSuccess: async (data) => { setMessage({ tone: "success", text: data.message }); setPreview(null); setDraftMapping({}); setFile(null); await Promise.all(["students", "courseGroups", "groups", "attendanceContext", "analytics", "plan"].map((key) => client.invalidateQueries({ queryKey: [key] }))); }, onError: fail("No se pudo cargar a los estudiantes.") });
   const mappingIsCurrent = Boolean(preview) && Object.keys({ ...preview?.mapping, ...draftMapping }).every((key) => preview?.mapping[key] === draftMapping[key]);
   const downloadTemplate = async (format: "csv" | "xlsx") => { try { await api.downloadImportTemplate(format); } catch (error) { fail("No se pudo descargar la plantilla.")(error); } };
 
   return <section className="page">
     <Link className="back-link" to="/students"><ArrowLeft size={16} /> Estudiantes</Link>
     <div className="page-heading"><div><h1>Cargar estudiantes desde Excel</h1><p className="page-subtitle">Sube tu lista y SIRAE crea solo los cursos y asignaturas que todavía no existan.</p></div></div>
+    {limitError ? <RequestError error={limitError} /> : null}
     {message && <p className={`notice notice-${message.tone}`} role="status">{message.text}{message.tone === "success" && <> <Link to="/students">Ver estudiantes</Link></>}</p>}
 
     <ol className="steps-row">

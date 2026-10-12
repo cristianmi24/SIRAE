@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { useDialogBehavior } from "../../lib/ui-hooks";
 import type { StudentDto } from "../../../../shared/types";
 import { ApiClientError, api, type QrDelivery, type StudentInput } from "../../services/api";
+import { isLimitError, LimitNotice, RequestError } from "../../components/LimitNotice";
 
 const formSchema = z.object({
   firstName: z.string().trim().min(2, "Escribe el nombre.").max(80),
@@ -32,6 +33,9 @@ export function StudentForm({
   const groups = useQuery({ queryKey: ["courseGroups"], queryFn: api.getCourseGroups });
   const auth = useQuery({ queryKey: ["auth"], queryFn: api.getMe });
   const canCreateCourse = auth.data?.user?.role === "ADMIN";
+  const plan = useQuery({ queryKey: ["plan"], queryFn: api.getPlan, enabled: canCreateCourse });
+  // Validación en la interfaz; el servidor vuelve a validar el límite al crear el curso.
+  const courseLimitReached = Boolean(plan.data && plan.data.item.usage.courses >= plan.data.item.limits.courses);
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(formSchema),
     mode: "onTouched",
@@ -68,6 +72,7 @@ export function StudentForm({
         queryClient.invalidateQueries({ queryKey: ["student", student?.id] }),
         queryClient.invalidateQueries({ queryKey: ["courseGroups"] }),
         queryClient.invalidateQueries({ queryKey: ["groups"] }),
+        queryClient.invalidateQueries({ queryKey: ["plan"] }),
       ]);
       if ("student" in result) {
         onSaved(result.student, result.qr);
@@ -91,11 +96,12 @@ export function StudentForm({
           <div className="form-grid">
             <div className="form-field"><label htmlFor="firstName">Nombres</label><input id="firstName" autoComplete="off" aria-invalid={Boolean(errors.firstName)} aria-describedby="firstName-error" placeholder="Ej. Juliana" {...form.register("firstName")} />{errors.firstName ? <small id="firstName-error" role="alert">{errors.firstName.message}</small> : null}</div>
             <div className="form-field"><label htmlFor="lastName">Apellidos</label><input id="lastName" autoComplete="off" aria-invalid={Boolean(errors.lastName)} aria-describedby="lastName-error" placeholder="Ej. Salazar Ruiz" {...form.register("lastName")} />{errors.lastName ? <small id="lastName-error" role="alert">{errors.lastName.message}</small> : null}</div>
-            <div className="form-field form-full"><label htmlFor="courseGroupId">Curso y grupo</label><select id="courseGroupId" {...form.register("courseGroupId")}><option value="">Sin asignar todavía</option>{groups.data?.items.map((group) => <option value={group.id} key={group.id}>Curso {group.grade} · Grupo {group.group}</option>)}{canCreateCourse && <option value={NEW_COURSE}>+ Crear curso nuevo</option>}</select></div>
+            <div className="form-field form-full"><label htmlFor="courseGroupId">Curso y grupo</label><select id="courseGroupId" {...form.register("courseGroupId")}><option value="">Sin asignar todavía</option>{groups.data?.items.map((group) => <option value={group.id} key={group.id}>Curso {group.grade} · Grupo {group.group}</option>)}{canCreateCourse && <option value={NEW_COURSE} disabled={courseLimitReached}>{courseLimitReached ? `+ Crear curso nuevo (límite de ${plan.data?.item.limits.courses} cursos alcanzado)` : "+ Crear curso nuevo"}</option>}</select></div>
+            {canCreateCourse && courseLimitReached && <div className="form-full"><LimitNotice title="Tu cuenta llegó al máximo de cursos" message={`Tienes ${plan.data?.item.usage.courses} de ${plan.data?.item.limits.courses} cursos. Puedes seguir registrando estudiantes en los cursos existentes.`} /></div>}
             {isNewCourse && <div className="form-full new-course-row"><div className="form-field"><label htmlFor="newGrade">Curso nuevo</label><input id="newGrade" placeholder="Ej. 8" {...form.register("newGrade")} /></div><div className="form-field"><label htmlFor="newGroup">Grupo</label><input id="newGroup" placeholder="Ej. A" {...form.register("newGroup")} /></div></div>}
             {student ? <p className="helper-text form-full">Código del estudiante: <strong className="code-tag">{student.document}</strong></p> : <p className="helper-text form-full">Al guardar, el sistema le asigna un código único para registrar su asistencia.</p>}
           </div>
-          {error ? <p className="form-error" role="alert">{error.message}</p> : null}
+          {error && isLimitError(error) ? <RequestError error={error} /> : error ? <p className="form-error" role="alert">{(error as Error).message}</p> : null}
           <div className="form-actions"><button type="button" className="button button-secondary" onClick={onClose}>Cancelar</button><button type="submit" className="button button-primary" disabled={mutation.isPending}>{mutation.isPending ? "Guardando…" : student ? "Guardar cambios" : "Registrar estudiante"}</button></div>
         </form>
       </section>

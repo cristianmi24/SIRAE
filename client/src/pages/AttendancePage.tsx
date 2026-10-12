@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlarmClock, Camera, CameraOff, Clock3, RefreshCw } from "lucide-react";
+import { AlarmClock, Camera, Clock3, RefreshCw, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api, type SessionDto } from "../services/api";
 import { CodeLinkPanel } from "../features/attendance/CodeLinkPanel";
 import { RosterList } from "../features/attendance/RosterList";
 import { listQueuedAttendance, queueAttendance, removeQueuedAttendance, type PendingAttendance } from "../lib/offline-attendance";
 import { LoadingState } from "../components/Feedback";
-import { CameraIndicator } from "../components/CameraIndicator";
+import { CameraIdle, QrCameraView } from "../components/QrCameraView";
 import { useQrScanner } from "../lib/use-qr-scanner";
 
 const prefix = "aulanexo:student:v1:";
@@ -47,6 +47,8 @@ export function AttendancePage() {
   const refreshSessions = async () => { await client.invalidateQueries({ queryKey: ["sessions"] }); await client.invalidateQueries({ queryKey: ["roster", sessionId] }); };
   const createSession = useMutation({ mutationFn: () => api.createSession(scheduleId, date), onSuccess: async ({ item }) => { setSessionId(item.id); setMessage(null); setTimingIssue(null); await client.invalidateQueries({ queryKey: ["sessions"] }); }, onError: fail("No se pudo abrir la clase.") });
   const closeSession = useMutation({ mutationFn: () => api.closeSession(sessionId), onSuccess: async ({ item }) => { stopScanner(); setMessage({ tone: "info", text: `Clase cerrada. ${item.absencesCreated} estudiantes sin registro quedaron como ausentes.` }); await refreshSessions(); }, onError: fail("No se pudo cerrar la clase.") });
+  // Reabrir no cambia horario, tolerancia ni enlaces: solo vuelve a permitir registros con QR y enlace.
+  const reopenSession = useMutation({ mutationFn: () => api.reopenSession(sessionId), onSuccess: async ({ item }) => { setMessage({ tone: "success", text: item.alreadyOpen ? "La clase ya estaba abierta." : `Clase reabierta. Se conservaron los registros existentes${item.absencesRemoved ? ` y ${item.absencesRemoved} ausencias automáticas volvieron a «Pendiente»` : ""}. Ya puedes registrar con QR o con el enlace.` }); await refreshSessions(); await client.invalidateQueries({ queryKey: ["attendanceLink", sessionId] }); }, onError: fail("No se pudo reabrir la clase.") });
   const adjust = useMutation({ mutationFn: (input: { startNow?: boolean; toleranceMinutes: number }) => api.adjustSession(sessionId, input), onSuccess: async (_data, input) => { setTimingIssue(null); setEditingTolerance(false); setMessage({ tone: "success", text: input.startNow ? `Listo: hoy la clase cuenta desde ahora, con ${input.toleranceMinutes} min de tolerancia. El horario semanal no cambió.` : `Tolerancia de hoy: ${input.toleranceMinutes} min.` }); await refreshSessions(); if (input.startNow) void startScanner(); }, onError: fail("No se pudo ajustar la hora de hoy.") });
 
   const handleQr = useCallback(async (payload: string) => {
@@ -141,13 +143,15 @@ export function AttendancePage() {
           <button role="tab" aria-selected={mode === "code"} className={mode === "code" ? "is-active" : ""} onClick={() => { setMode("code"); stopScanner(); }}>Por código</button>
           <button role="tab" aria-selected={mode === "qr"} className={mode === "qr" ? "is-active" : ""} onClick={() => setMode("qr")}>Escanear QR</button>
         </div>
-        {selectedSession.state === "CLOSED" && mode === "qr" && <p className="notice notice-info">La clase está cerrada: los QR que escanees ahora quedan como <strong>Tarde</strong>.</p>}
+        {selectedSession.state === "CLOSED" && mode === "qr" && <p className="notice notice-info">La clase está cerrada: los QR que escanees ahora quedan como <strong>Tarde</strong>. Si necesitas volver a tomar asistencia, usa <strong>Reabrir clase</strong>.</p>}
         {mode === "code" ? <CodeLinkPanel sessionId={selectedSession.id} open={selectedSession.state === "OPEN"} clock={clock} onMessage={setMessage} /> : <>
-        {scannerActive && <CameraIndicator onStop={stopScanner} />}
-        <div className="camera-frame"><video ref={scanner.videoRef} muted playsInline hidden={!scannerActive} aria-label="Cámara para escanear códigos QR" />{!scannerActive && <div className="camera-placeholder"><Camera size={30} aria-hidden="true" /><strong>La cámara se enciende cuando la actives</strong><span>El navegador te pedirá permiso.</span></div>}</div>
-        {lastScan && <div className={`last-scan status-${(lastScan.status ?? "pending").toLowerCase()}`} aria-live="polite"><strong>{lastScan.name}</strong><span>{lastScan.label}</span><time>{clock(lastScan.at, true)}</time></div>}
+        <QrCameraView scanner={scanner} title={`Asistencia · Curso ${groupLabel(selectedSession.courseGroupId)}`} idle={<CameraIdle />}>
+          {message?.tone === "error" && <p className="notice notice-error" role="alert">{message.text}</p>}
+          {lastScan && <div className={`last-scan status-${(lastScan.status ?? "pending").toLowerCase()}`} aria-live="polite"><strong>{lastScan.name}</strong><span>{lastScan.label}</span><time>{clock(lastScan.at, true)}</time></div>}
+        </QrCameraView>
+        {lastScan && <div className={`last-scan status-${(lastScan.status ?? "pending").toLowerCase()}`}><strong>{lastScan.name}</strong><span>{lastScan.label}</span><time>{clock(lastScan.at, true)}</time></div>}
         <div className="dialog-actions">
-          {scannerActive ? <button className="button button-secondary" onClick={stopScanner}><CameraOff size={17} /> Detener cámara</button> : <button className="button button-primary" disabled={Boolean(timingIssue)} onClick={requestScanner}><Camera size={17} /> Activar cámara</button>}
+          {!scannerActive && <button className="button button-primary" disabled={Boolean(timingIssue)} onClick={requestScanner}><Camera size={17} /> Activar cámara</button>}
           {queued.some((x) => x.sessionId === sessionId) && <button className="button button-ghost" disabled={!navigator.onLine} onClick={() => void Promise.all(queued.filter((x) => x.sessionId === sessionId).map(syncOne))}><RefreshCw size={16} /> Enviar pendientes ({queued.filter((x) => x.sessionId === sessionId).length})</button>}
         </div></>}
       </article>
@@ -156,8 +160,9 @@ export function AttendancePage() {
         <div className="card-title-row">
           <div><h2>Lista del curso</h2>{summary && <div className="summary-pills compact-pills"><span className="pill pill-green">{summary.present} a tiempo</span><span className="pill pill-amber">{summary.late} tarde</span><span className="pill pill-coral">{summary.absent} ausentes</span><span className="pill">{summary.total} total</span></div>}</div>
           {selectedSession.state === "OPEN" && <button className="button button-danger compact-button" onClick={() => { if (window.confirm("¿Cerrar la clase? Quienes no tengan registro quedarán como ausentes.")) closeSession.mutate(); }} disabled={closeSession.isPending}>{closeSession.isPending ? "Cerrando…" : "Cerrar clase"}</button>}
+          {selectedSession.state === "CLOSED" && <button className="button button-secondary compact-button" onClick={() => { if (window.confirm("¿Reabrir la clase? Se conservan los registros ya tomados y se podrá registrar de nuevo con QR o enlace. El horario y la tolerancia no cambian.")) reopenSession.mutate(); }} disabled={reopenSession.isPending}><RotateCcw size={16} /> {reopenSession.isPending ? "Reabriendo…" : "Reabrir clase"}</button>}
         </div>
-        <p className="helper-text">{selectedSession.state === "CLOSED" ? "Clase cerrada: quien llegue ahora se registra como «Tarde» (con QR o tocando «Tarde»). Otras correcciones piden motivo." : "Toca el estado de cada estudiante para marcarlo a mano."}</p>
+        <p className="helper-text">{selectedSession.state === "CLOSED" ? "Clase cerrada: quien llegue ahora se registra como «Tarde» (con QR o tocando «Tarde»). Otras correcciones piden motivo. Con «Reabrir clase» vuelves a habilitar el QR y el enlace." : "Toca el estado de cada estudiante para marcarlo a mano."}</p>
         {roster.isLoading ? <LoadingState label="Cargando lista…" /> : <RosterList rows={roster.data?.items ?? []} closed={selectedSession.state === "CLOSED"} saving={markMutation.isPending} clock={clock} onMark={(studentId, status, reason) => markMutation.mutate({ studentId, status, reason: reason || undefined })} />}
       </article>
     </div>}

@@ -1,4 +1,4 @@
-import { Activity, BarChart3, BookOpenText, CalendarClock, FileBarChart2, Home, NotebookPen, QrCode, Settings2, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Building2, BookOpenText, CalendarClock, FileBarChart2, Home, NotebookPen, QrCode, Settings2, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 
 export type NavItem = { to: string; label: string; icon: LucideIcon; tone: string; step?: number; shortcut?: string };
 export type NavSection = { title: string; items: NavItem[] };
@@ -27,9 +27,17 @@ export const adminItems: NavItem[] = [
   { to: "/audit", label: "Auditoría", icon: ShieldCheck, tone: "slate" },
 ];
 
-export function navItemsFor(user: { role: string | null; platformAdmin?: boolean }): NavItem[] {
+// Solo para el administrador de una cuenta de institución.
+export const institutionItem: NavItem = { to: "/institution", label: "Institución", icon: Building2, tone: "teal" };
+export const isInstitutionAdmin = (user: { role: string | null; accountType?: string }) => user.role === "ADMIN" && user.accountType === "INSTITUTION";
+export function adminItemsFor(user: { role: string | null; accountType?: string }): NavItem[] {
+  if (user.role !== "ADMIN") return [];
+  return isInstitutionAdmin(user) ? [institutionItem, ...adminItems] : adminItems;
+}
+
+export function navItemsFor(user: { role: string | null; platformAdmin?: boolean; accountType?: string }): NavItem[] {
   if (user.platformAdmin) return [monitoring];
-  return [home, ...sections.flatMap((section) => section.items), ...(user.role === "ADMIN" ? adminItems : [])];
+  return [home, ...sections.flatMap((section) => section.items), ...adminItemsFor(user)];
 }
 
 const extraLabels: Record<string, string> = { "/students/import": "Cargar desde Excel" };

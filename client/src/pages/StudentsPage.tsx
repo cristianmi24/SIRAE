@@ -7,6 +7,7 @@ import { ErrorPanel, LoadingState, QrDialog, StatusChip } from "../components/Fe
 import { StudentForm } from "../features/students/StudentForm";
 import { DeleteEverythingDialog } from "../features/students/DeleteEverythingDialog";
 import { api, type QrDelivery } from "../services/api";
+import { PlanUsage } from "../components/LimitNotice";
 
 export function StudentsPage() {
   const client = useQueryClient();
@@ -40,7 +41,7 @@ export function StudentsPage() {
 
   return <div className="page">
     <header className="page-heading">
-      <div><h1>Estudiantes</h1><p className="page-subtitle">Solo se registran nombres y apellidos. Cada estudiante recibe un código único para registrar su asistencia.</p></div>
+      <div><h1>Estudiantes</h1><p className="page-subtitle">Solo se registran nombres y apellidos. Cada estudiante recibe un código único para registrar su asistencia.</p><PlanUsage compact /></div>
       <div className="page-actions">
         <Link className="button button-secondary" to="/students/import"><FileSpreadsheet size={18} /> Cargar desde Excel</Link>
         <button className="button button-primary" onClick={() => setCreating(true)}><Plus size={18} /> Nuevo estudiante</button>

@@ -2,7 +2,8 @@ import React, { Suspense } from "react";
 import { lazyPage } from "../lib/lazy-page";
 import { useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
-import { CheckCircle2, Eye, EyeOff, GraduationCap, LockKeyhole, Moon, ShieldCheck, Sparkles, Sun, UsersRound } from "lucide-react";
+import { Building2, CheckCircle2, Eye, EyeOff, GraduationCap, LockKeyhole, Moon, ShieldCheck, Sparkles, Sun, UserRound, UsersRound } from "lucide-react";
+import { ACCOUNT_LIMITS } from "../../../shared/limits";
 import { StudentLookup } from "../features/auth/StudentLookup";
 import { StudentSelfReport } from "../features/auth/StudentSelfReport";
 import type { StudentSelfReportDto } from "../services/api";
@@ -31,6 +32,7 @@ const StudentCodesPage = lazyPage(() => import("../pages/StudentCodesPage").then
 const LegalPage = lazyPage(() => import("../pages/LegalPage").then((page) => ({ default: page.LegalPage })));
 const MonitoringPage = lazyPage(() => import("../pages/MonitoringPage").then((page) => ({ default: page.MonitoringPage })));
 const NotFoundPage = lazyPage(() => import("../pages/NotFoundPage").then((page) => ({ default: page.NotFoundPage })));
+const InstitutionPage = lazyPage(() => import("../pages/InstitutionPage").then((page) => ({ default: page.InstitutionPage })));
 const AuditPage = lazyPage(() => import("../pages/AuditPage").then((page) => ({ default: page.AuditPage })));
 
 function Brand() {
@@ -46,6 +48,8 @@ function SignInScreen() {
   const [error, setError] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [accepted, setAccepted] = React.useState(false);
+  const [accountType, setAccountType] = React.useState<"PERSONAL" | "INSTITUTION">("PERSONAL");
+  const [institutionName, setInstitutionName] = React.useState("");
   const [audience, setAudience] = React.useState<"teacher" | "student">("teacher");
   const [selfReport, setSelfReport] = React.useState<{ report: StudentSelfReportDto; query: { code?: string; tokenHash?: string } } | null>(null);
   const submit = async (event: React.FormEvent) => {
@@ -53,7 +57,7 @@ function SignInScreen() {
     setError("");
     try {
       if (mode === "login") await api.login({ email, password });
-      else await api.register({ name, email, password, accountType: "PERSONAL" });
+      else await api.register({ name, email, password, accountType, ...(accountType === "INSTITUTION" ? { institutionName: institutionName.trim() } : {}) });
       window.location.reload();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "No fue posible completar el acceso.");
@@ -83,7 +87,7 @@ function SignInScreen() {
         </div>
         <aside className="access-card" aria-label="Acceso y registro">
           <div className="segmented audience-tabs" role="tablist" aria-label="Tipo de acceso">
-            <button role="tab" aria-selected={audience === "teacher"} className={audience === "teacher" ? "is-active" : ""} onClick={() => setAudience("teacher")}><LockKeyhole size={15} /> Docente</button>
+            <button role="tab" aria-selected={audience === "teacher"} className={audience === "teacher" ? "is-active" : ""} onClick={() => setAudience("teacher")}><LockKeyhole size={15} /> Docente o institución</button>
             <button role="tab" aria-selected={audience === "student"} className={audience === "student" ? "is-active" : ""} onClick={() => setAudience("student")}><GraduationCap size={15} /> Estudiante</button>
           </div>
           {audience === "student" ? <>
@@ -91,13 +95,27 @@ function SignInScreen() {
             <p>Escribe tu código o escanea tu QR para ver tus notas y asistencias hasta hoy.</p>
             <StudentLookup onReport={(report, query) => setSelfReport({ report, query })} />
           </> : <>
-          <h2>{mode === "login" ? "Entra a tu aula." : "Crea tu aula."}</h2>
-          <p>{mode === "login" ? "Accede con tu correo y clave." : "Cualquier persona puede crear un aula personal. Las instituciones las administra el administrador principal."}</p>
+          <h2>{mode === "login" ? "Entra a tu aula." : "Crea tu cuenta."}</h2>
+          <p>{mode === "login" ? "Accede con tu correo y clave." : "Elige el tipo de cuenta que vas a usar."}</p>
           <form className="compact-form" onSubmit={submit}>
-            {mode === "register" && <label className="form-field"><span>Nombre</span><input value={name} onChange={(event) => setName(event.target.value)} required maxLength={160} /></label>}
+            {mode === "register" && <fieldset className="account-type-picker">
+              <legend>Tipo de cuenta</legend>
+              <label className={`account-type-option ${accountType === "PERSONAL" ? "is-selected" : ""}`}>
+                <input type="radio" name="accountType" value="PERSONAL" checked={accountType === "PERSONAL"} onChange={() => setAccountType("PERSONAL")} />
+                <UserRound size={20} aria-hidden="true" />
+                <span><strong>Docente</strong><small>Cuenta individual para tus cursos, estudiantes y asistencia. Hasta {ACCOUNT_LIMITS.PERSONAL.courses} cursos.</small></span>
+              </label>
+              <label className={`account-type-option ${accountType === "INSTITUTION" ? "is-selected" : ""}`}>
+                <input type="radio" name="accountType" value="INSTITUTION" checked={accountType === "INSTITUTION"} onChange={() => setAccountType("INSTITUTION")} />
+                <Building2 size={20} aria-hidden="true" />
+                <span><strong>Institución</strong><small>Gestiona hasta {ACCOUNT_LIMITS.INSTITUTION.teachers} docentes, con un máximo de {ACCOUNT_LIMITS.INSTITUTION.coursesPerTeacher} cursos cada uno.</small></span>
+              </label>
+            </fieldset>}
+            {mode === "register" && <label className="form-field"><span>{accountType === "INSTITUTION" ? "Nombre de quien administra" : "Nombre"}</span><input value={name} onChange={(event) => setName(event.target.value)} required minLength={2} maxLength={160} autoComplete="name" /></label>}
+            {mode === "register" && accountType === "INSTITUTION" && <label className="form-field"><span>Nombre de la institución</span><input value={institutionName} onChange={(event) => setInstitutionName(event.target.value)} required minLength={2} maxLength={120} autoComplete="organization" /></label>}
             <label className="form-field"><span>Correo</span><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
             <label className="form-field"><span>Clave</span><span className="password-field"><input type={showPassword ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required /><button type="button" className="password-toggle" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Ocultar clave" : "Mostrar clave"} aria-pressed={showPassword} title={showPassword ? "Ocultar clave" : "Mostrar clave"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span></label>
-            {mode === "register" && <p className="helper-text">Tu cuenta crea un aula personal con un máximo de 6 cursos. Las instituciones las gestiona el administrador.</p>}
+            {mode === "register" && <p className="helper-text">{accountType === "INSTITUTION" ? "Después de registrarte podrás invitar a tus docentes desde Configuración." : "Si una institución te invitó, regístrate como docente con el mismo correo y entrarás a ella."}</p>}
             {mode === "register" && <label className="check-line terms-check"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} required /> <span>Acepto los <Link to="/legal" target="_blank">términos, la política de privacidad y seguridad</Link>.</span></label>}
             {error && <p className="notice notice-error" role="alert">{error}</p>}
             <button className="button button-primary button-wide" disabled={mode === "register" && !accepted}><LockKeyhole size={18} /> {mode === "login" ? "Entrar" : "Registrarme"}</button>
@@ -162,6 +180,7 @@ function AuthenticatedApplication() {
           <Route path="/reports/courses/:id" element={<CourseGradesReportPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/audit" element={<AuditPage />} />
+          <Route path="/institution" element={auth.data.user.role === "ADMIN" && auth.data.user.accountType === "INSTITUTION" ? <InstitutionPage /> : <Navigate to="/" replace />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>

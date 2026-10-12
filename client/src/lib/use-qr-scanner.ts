@@ -3,8 +3,34 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const IDLE_LIMIT_MS = 60_000;
 const SCAN_INTERVAL_MS = 120;
 
-// Cámara trasera en buena resolución: los QR impresos se leen mucho mejor así.
-const VIDEO_CONSTRAINTS: MediaTrackConstraints = { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } };
+// Cámara trasera (en el celular) o la cámara disponible (en el computador), en alta resolución:
+// los QR impresos se leen mucho mejor y la vista se puede ampliar a toda la pantalla.
+const RESOLUTION: MediaTrackConstraints = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+const VIDEO_CONSTRAINTS: MediaTrackConstraints = { facingMode: { ideal: "environment" }, ...RESOLUTION };
+
+function cameraErrorMessage(reason: unknown): string {
+  const name = reason instanceof DOMException || reason instanceof Error ? reason.name : "";
+  if (name === "NotAllowedError" || name === "PermissionDeniedError" || name === "SecurityError") return "No diste permiso para usar la cámara. Actívalo en el candado de la barra de direcciones (o en los ajustes del navegador) y vuelve a intentarlo.";
+  if (name === "NotFoundError" || name === "DevicesNotFoundError" || name === "OverconstrainedError") return "No se encontró una cámara disponible en este dispositivo.";
+  if (name === "NotReadableError" || name === "TrackStartError" || name === "AbortError") return "La cámara está siendo usada por otra aplicación o pestaña. Ciérrala e inténtalo de nuevo.";
+  return "No se pudo usar la cámara. Revisa el permiso del navegador e inténtalo de nuevo.";
+}
+
+async function listCameras(): Promise<MediaDeviceInfo[]> {
+  try { return (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === "videoinput"); } catch { return []; }
+}
+
+// Pide la cámara; si el dispositivo no admite las preferencias (resolución o cámara trasera),
+// reintenta con cualquier cámara disponible.
+async function openCamera(deviceId?: string): Promise<MediaStream> {
+  const preferred: MediaTrackConstraints = deviceId ? { deviceId: { exact: deviceId }, ...RESOLUTION } : VIDEO_CONSTRAINTS;
+  try { return await navigator.mediaDevices.getUserMedia({ video: preferred, audio: false }); }
+  catch (reason) {
+    const name = reason instanceof DOMException || reason instanceof Error ? reason.name : "";
+    if (name !== "OverconstrainedError" && name !== "ConstraintNotSatisfiedError") throw reason;
+    return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  }
+}
 
 type Detector = { detect: (source: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
 declare global { interface Window { BarcodeDetector?: { new (options: { formats: string[] }): Detector; getSupportedFormats?: () => Promise<string[]> } } }
@@ -41,6 +67,7 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
   resultRef.current = onResult;
   const [active, setActive] = useState(false);
   const [error, setError] = useState("");
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
 
   const stop = useCallback(() => {
     window.clearTimeout(idleRef.current);
@@ -62,13 +89,17 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
     resultRef.current(text);
   }, [armIdle, stop, options.stopOnRead]);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (deviceId?: unknown) => {
     setError("");
     const video = videoRef.current;
     if (!video || streamRef.current) return;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) { setError("La cámara solo funciona en una conexión segura (https)."); return; }
+    // Si el navegador ya sabe que no hay ninguna cámara, se avisa sin pedir permiso.
+    const devices = await navigator.mediaDevices.enumerateDevices?.().catch(() => [] as MediaDeviceInfo[]) ?? [];
+    if (devices.length > 0 && !devices.some((device) => device.kind === "videoinput")) { setError("No se encontró una cámara en este dispositivo. Puedes registrar la asistencia por código o a mano."); return; }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: VIDEO_CONSTRAINTS, audio: false });
+      const stream = await openCamera(typeof deviceId === "string" ? deviceId : undefined);
+      if (streamRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       streamRef.current = stream;
       // Enfoque continuo cuando el dispositivo lo permite.
       const track = stream.getVideoTracks()[0];
@@ -79,6 +110,8 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
       await video.play();
       setActive(true);
       armIdle();
+      // Con el permiso concedido ya se conocen todas las cámaras (para poder cambiar entre ellas).
+      void listCameras().then(setCameras);
 
       const detector = await nativeDetector();
       if (detector) {
@@ -102,10 +135,19 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
       stopLoopRef.current = () => controls.stop();
     } catch (reason) {
       stop();
-      const name = reason instanceof DOMException ? reason.name : "";
-      setError(name === "NotAllowedError" ? "No diste permiso para usar la cámara. Actívalo en el candado de la barra de direcciones." : name === "NotFoundError" ? "No se encontró una cámara en este dispositivo." : "No se pudo usar la cámara. Revisa el permiso del navegador.");
+      setError(cameraErrorMessage(reason));
     }
   }, [armIdle, handle, stop]);
+
+  // Pasa a la siguiente cámara (por ejemplo, de la frontal a la trasera).
+  const switchCamera = useCallback(async () => {
+    if (cameras.length < 2) return;
+    const current = streamRef.current?.getVideoTracks()[0]?.getSettings().deviceId;
+    const index = cameras.findIndex((camera) => camera.deviceId === current);
+    const next = cameras[(index + 1) % cameras.length]!;
+    stop();
+    await start(next.deviceId);
+  }, [cameras, start, stop]);
 
   useEffect(() => {
     const hide = () => { if (document.visibilityState === "hidden") stop(); };
@@ -114,5 +156,5 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
     return () => { document.removeEventListener("visibilitychange", hide); window.removeEventListener("pagehide", stop); stop(); };
   }, [stop]);
 
-  return { videoRef, active, error, start, stop, armIdle };
+  return { videoRef, active, error, start, stop, armIdle, cameras: cameras.length, switchCamera };
 }

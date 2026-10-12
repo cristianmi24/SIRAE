@@ -1,4 +1,4 @@
-import type { AuthUserDto, PaginatedResult, StudentDto } from "../../../shared/types";
+import type { AccountPlanDto, AuthUserDto, PaginatedResult, StudentDto } from "../../../shared/types";
 
 export class ApiClientError extends Error {
   constructor(public readonly status: number, public readonly code: string, message: string, public readonly details?: Record<string, string>) { super(message); this.name = "ApiClientError"; }
@@ -58,6 +58,21 @@ export interface StudentSelfReportDto {
   history: { date: string; subject: string; status: string; statusLabel: string; time?: string }[];
   grades: { average?: number; performance?: string; periods: { name: string; average: number; performance?: string }[]; assessments: { period: string; subject: string; name: string; value: number; feedback?: string }[] };
 }
+export interface InstitutionCourseDto { id: string; label: string; academicYear: number; students: number; sessions: number; lastSession?: { id: string; dateKey: string; startsAt: string; state: "OPEN" | "CLOSED"; summary: { present: number; late: number; absent: number; justified: number; pending: number } } }
+export interface InstitutionOverviewDto {
+  institution: { id: string; name: string; timezone: string; type: "PERSONAL" | "INSTITUTION" }; plan: AccountPlanDto;
+  teachers: { membershipId: string; userId: string; name: string; email?: string; lastSeenAt?: string; courses: InstitutionCourseDto[]; students: number }[];
+  admins: { membershipId: string; name: string; email?: string }[];
+  unassignedCourses: InstitutionCourseDto[];
+  pendingInvitations: { id: string; email: string; role: "ADMIN" | "DOCENTE"; courseGroupIds: string[]; expiresAt: string }[];
+  generatedAt: string;
+}
+export interface InstitutionCourseStudentsDto {
+  teacher: { membershipId: string; name: string; email?: string }; course: { id: string; label: string; academicYear: number }; totalSessions: number;
+  lastSession?: { id: string; dateKey: string; startsAt: string; state: "OPEN" | "CLOSED" };
+  students: { id: string; name: string; code: string; present: number; late: number; absent: number; justified: number; pending: number; attendancePercent?: number; lastStatus?: RosterLine["status"]; lastRecordedAt?: string }[];
+  generatedAt: string;
+}
 export interface ObservationDto { id: string; studentId: string; studentName?: string; type: string; description: string; priority: "LOW" | "NORMAL" | "HIGH"; followUp?: string; status: "OPEN" | "IN_PROGRESS" | "CLOSED"; observedAt: string }
 async function getAllStudents(status: "ACTIVO" | "TODOS" = "ACTIVO"): Promise<PaginatedResult<StudentDto>> {
   const items: StudentDto[] = [];
@@ -79,7 +94,12 @@ export const api = {
   getMe: () => request<AuthState>("/api/auth/me"),
   getPlatformOverview: () => request<PlatformOverviewDto>("/api/platform/overview"),
   login: (input: { email: string; password: string }) => request<{ ok: true }>("/api/auth/login", json("POST", input)),
-  register: (input: { name: string; email: string; password: string; accountType: "PERSONAL" | "INSTITUTION" }) => request<{ ok: true }>("/api/auth/register", json("POST", input)),
+  register: (input: { name: string; email: string; password: string; accountType: "PERSONAL" | "INSTITUTION"; institutionName?: string }) => request<{ ok: true }>("/api/auth/register", json("POST", input)),
+  switchWorkspace: (institutionId: string) => request<{ ok: true }>("/api/auth/workspace", json("POST", { institutionId })),
+  getPlan: () => request<{ item: AccountPlanDto }>("/api/learning/plan"),
+  getInstitutionOverview: () => request<InstitutionOverviewDto>("/api/learning/institution/overview"),
+  getInstitutionCourseStudents: (membershipId: string, courseId: string) => request<InstitutionCourseStudentsDto>(`/api/learning/institution/teachers/${encodeURIComponent(membershipId)}/courses/${encodeURIComponent(courseId)}/students`),
+  reopenSession: (sessionId: string) => request<{ item: { id: string; state: string; absencesRemoved: number; alreadyOpen: boolean } }>(`/api/learning/attendance/sessions/${sessionId}/reopen`, json("POST")),
   logout: () => request<void>("/api/auth/logout", json("POST")),
   getStudents: (query = "") => request<PaginatedResult<StudentDto>>(`/api/students${query}`), getAllStudents, getStudent: (id: string) => request<{ item: StudentDto }>(`/api/students/${id}`),
   downloadStudentQrs: (format: "pdf" | "zip") => download(`/api/students/qr-export?format=${format}`),

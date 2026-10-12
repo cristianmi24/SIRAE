@@ -222,6 +222,15 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
       expect([after.startsAt, after.endsAt, after.scheduledStartsAt, after.toleranceMinutes]).toEqual([before.startsAt, before.endsAt, before.scheduledStartsAt, before.toleranceMinutes]);
     });
 
+    it("los reportes PDF siguen generándose", async () => {
+      for (const path of ["/api/students/codes.pdf", `/api/learning/reports/students/${studentIds[0]}.pdf`]) {
+        const pdf = await agent.get(path).buffer(true).parse((res, done) => { const chunks: Buffer[] = []; res.on("data", (c: Buffer) => chunks.push(c)); res.on("end", () => done(null, Buffer.concat(chunks))); });
+        expect(pdf.status, path).toBe(200);
+        expect(pdf.headers["content-type"]).toContain("application/pdf");
+        expect((pdf.body as Buffer).subarray(0, 4).toString()).toBe("%PDF");
+      }
+    });
+
     it("solo quien tiene acceso puede reabrir", async () => {
       await post(agent, `/api/learning/attendance/sessions/${sessionId}/close`);
       const stranger = await register("docente-ajeno", "PERSONAL");
