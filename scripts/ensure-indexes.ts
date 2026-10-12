@@ -11,6 +11,13 @@ async function main(): Promise<void> {
       console.info("Índice legado eliminado: manusOpenId_1");
     }
   }
+  // Índice antiguo de asistencia (sparse): se reemplaza por uno parcial que no choca con registros sin identificador.
+  for (const index of await Attendance.collection.indexes().catch(() => [])) {
+    if (index.name === "institutionId_1_clientEventId_1" && !index.partialFilterExpression) {
+      await Attendance.collection.dropIndex(index.name);
+      console.info("Índice legado reemplazado: institutionId_1_clientEventId_1");
+    }
+  }
   const models = [Complaint, Institution, User, BootstrapState, Membership, MembershipInvitation, CourseGroup, Enrollment, Student, AuditLog, Subject, AcademicPeriod, GradeCategory, Assessment, Grade, Schedule, ScheduleBreak, AttendanceLinkEvent, ClassSession, Attendance, Observation, LearningResource, ImportJob];
   for (const currentModel of models) { await currentModel.createCollection().catch(() => undefined); await currentModel.createIndexes(); const indexes = await currentModel.collection.indexes(); console.info(`${currentModel.modelName}: ${indexes.map((index) => index.name).join(", ")}`); }
 }

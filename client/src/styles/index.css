@@ -155,8 +155,11 @@ a { color: var(--blue); }
 .metric-grid > .metric-card:nth-child(4n+4):not([class*="tone-"]) { --tone: var(--coral); }
 
 /* Inicio */
-.welcome-banner { position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 1.7rem 1.8rem; border-radius: 18px; background: #4361ee; color: #fff; }
-.welcome-banner::after { content: ""; position: absolute; right: -40px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255, 255, 255, .09); pointer-events: none; }
+.welcome-banner { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 1rem; min-height: 200px; padding: 1.7rem 1.8rem; border-radius: 18px; background: #2260e6; color: #fff; isolation: isolate; }
+/* Ilustración a la derecha; su borde izquierdo se difumina con el fondo para que no se vea el corte. */
+.welcome-banner::before { content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; right: 0; aspect-ratio: 3 / 1; max-width: 100%; background: url("/qr.webp") right center / cover no-repeat; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 38%); mask-image: linear-gradient(90deg, transparent 0, #000 38%); pointer-events: none; }
+.welcome-banner .welcome-text { position: relative; max-width: min(100%, 520px); }
+.welcome-banner h1, .welcome-banner p { text-shadow: 0 1px 8px rgba(20, 50, 140, .35); }
 .welcome-banner h1 { color: #fff; }
 .welcome-banner p { margin: .35rem 0 0; color: #e3e8ff; font-size: 1.02rem; }
 .welcome-banner .button { position: relative; z-index: 1; }
@@ -202,8 +205,14 @@ a { color: var(--blue); }
 .inline-form .form-field { flex: 1 1 160px; }
 .inline-form .narrow-field { flex: 0 1 110px; }
 .scale-band { padding: .7rem; margin-top: .6rem; border-radius: 12px; background: var(--bg); }
-.checkbox-list { display: flex; flex-wrap: wrap; gap: .35rem; }
-.checkbox-list label { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .6rem; border: 1px solid var(--line); border-radius: 999px; font-weight: 700; font-size: .8rem; cursor: pointer; }
+.checkbox-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: .35rem; max-height: 240px; overflow-y: auto; padding: .15rem; }
+.checkbox-list label { min-width: 0; }
+.checkbox-list label span, .checkbox-list label { overflow-wrap: anywhere; }
+/* Las casillas no heredan el tamaño de los campos de texto. */
+.form-field .checkbox-list input[type="checkbox"], .checkbox-list input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; padding: 0; margin: 0; flex: none; }
+.checkbox-search { margin-bottom: .45rem; }
+.course-select { max-width: 360px; }
+.checkbox-list label { display: flex; align-items: center; gap: .45rem; padding: .3rem .65rem; border: 1px solid var(--line); border-radius: 10px; line-height: 1.25; font-weight: 700; font-size: .8rem; cursor: pointer; }
 .checkbox-list label:has(input:checked) { border-color: var(--violet); background: var(--violet-bg); color: #5b2fb8; }
 .checkbox-list input { accent-color: var(--violet); }
 .new-course-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: .85rem; border-radius: 12px; background: var(--violet-bg); }
@@ -512,7 +521,8 @@ a { color: var(--blue); }
   .metric-grid { grid-template-columns: 1fr 1fr; gap: .7rem; }
   .metric-value { font-size: 1.6rem; }
   .content-card { padding: 1.1rem; }
-  .welcome-banner { padding: 1.3rem; }
+  .welcome-banner { padding: 1.3rem 1.3rem 5.6rem; min-height: 0; }
+  .welcome-banner::before { top: auto; height: 5.6rem; max-width: none; right: -.5rem; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 38%), linear-gradient(180deg, transparent 0, #000 30%); mask-image: linear-gradient(90deg, transparent 0, #000 38%), linear-gradient(180deg, transparent 0, #000 30%); -webkit-mask-composite: source-in; mask-composite: intersect; }
   .details-list div { grid-template-columns: 1fr; gap: .2rem; }
   .page-actions, .page-actions .button { width: 100%; }
   .filter-bar-end { margin-left: 0; }

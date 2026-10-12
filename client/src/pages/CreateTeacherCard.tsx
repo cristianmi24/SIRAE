@@ -15,6 +15,7 @@ export function CreateTeacherCard({ maxCourses, disabled }: { maxCourses: number
   const [selected, setSelected] = useState<string[]>([]);
   const [grade, setGrade] = useState("");
   const [group, setGroup] = useState("");
+  const [courseSearch, setCourseSearch] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState<unknown>(null);
   const refresh = () => Promise.all([client.invalidateQueries({ queryKey: ["institutionOverview"] }), client.invalidateQueries({ queryKey: ["plan"] }), client.invalidateQueries({ queryKey: ["courseGroups"] }), client.invalidateQueries({ queryKey: ["memberships"] })]);
@@ -40,7 +41,8 @@ export function CreateTeacherCard({ maxCourses, disabled }: { maxCourses: number
       <label className="form-field"><span>Correo</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={254} autoComplete="off" /></label>
       <label className="form-field form-full"><span>Contraseña (mínimo 8 caracteres)</span><input type="text" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} maxLength={200} autoComplete="new-password" /></label>
       <fieldset className="form-field form-full"><legend>Cursos del docente ({selected.length}/{maxCourses})</legend>
-        <div className="checkbox-list">{(groups.data?.items ?? []).map((item) => { const checked = selected.includes(item.id); return <label key={item.id}><input type="checkbox" checked={checked} disabled={!checked && selected.length >= maxCourses} onChange={(event) => toggle(item.id, event.target.checked)} />{item.label} · {item.academicYear}</label>; })}
+        {(groups.data?.items.length ?? 0) > 8 && <input className="checkbox-search" type="search" placeholder="Buscar curso…" aria-label="Buscar curso" value={courseSearch} onChange={(event) => setCourseSearch(event.target.value)} />}
+        <div className="checkbox-list">{(groups.data?.items ?? []).filter((item) => !courseSearch.trim() || `${item.label} ${item.academicYear}`.toLowerCase().includes(courseSearch.trim().toLowerCase()) || selected.includes(item.id)).map((item) => { const checked = selected.includes(item.id); return <label key={item.id}><input type="checkbox" checked={checked} disabled={!checked && selected.length >= maxCourses} onChange={(event) => toggle(item.id, event.target.checked)} />{item.label} · {item.academicYear}</label>; })}
           {!groups.data?.items.length && <span className="helper-text">Todavía no hay cursos. Crea uno aquí abajo.</span>}</div>
       </fieldset>
       <div className="form-full" style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "end" }}>

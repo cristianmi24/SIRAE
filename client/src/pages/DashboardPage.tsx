@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Check, NotebookPen, QrCode, Sparkles, Users } from "lucide-react";
+import { Building2, CalendarClock, Check, NotebookPen, QrCode, Sparkles, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { AuthUserDto } from "../../../shared/types";
 import { ErrorPanel, LoadingState, Notice } from "../components/Feedback";
@@ -33,11 +33,23 @@ export function DashboardPage({ user }: { user: AuthUserDto }) {
     { done: data.totals.sessions > 0, title: "Toma asistencia", text: "Escanea los QR o marca a mano", to: "/attendance", action: "Tomar asistencia", icon: QrCode, tone: "green" },
   ];
   const nextStep = steps.findIndex((step) => !step.done);
+  const firstName = user.name.split(" ")[0];
+  const institutionName = user.institution?.name;
+  const isInstitutionAdmin = user.accountType === "INSTITUTION" && isAdmin;
+  const stepText = nextStep === -1 ? "Tu aula está lista. Esto es lo más reciente." : `Siguiente paso: ${steps[nextStep]!.title.toLowerCase()}.`;
+  // Cuenta personal: saludo al docente. Institución: el saludo cambia según su rol en ella.
+  const greeting = isInstitutionAdmin
+    ? { title: institutionName ?? "Tu institución", text: `Hola, ${firstName}. Administras ${user.plan?.usage.teachers ?? 0} docentes y ${user.plan?.usage.courses ?? courseCount} cursos.` }
+    : user.accountType === "INSTITUTION"
+      ? { title: `Hola, ${firstName}`, text: `Docente de ${institutionName ?? "tu institución"}. ${stepText}` }
+      : { title: `Hola, ${firstName}`, text: stepText };
 
   return <div className="page">
     <header className="welcome-banner">
-      <div><h1>Hola, {user.name.split(" ")[0]}</h1><p>{nextStep === -1 ? "Tu aula está lista. Esto es lo más reciente." : `Siguiente paso: ${steps[nextStep]!.title.toLowerCase()}.`}</p></div>
-      <Link to="/attendance" className="button button-sun"><QrCode size={18} /> Tomar asistencia</Link>
+      <div className="welcome-text"><h1>{greeting.title}</h1><p>{greeting.text}</p></div>
+      {isInstitutionAdmin
+        ? <Link to="/institution" className="button button-sun"><Building2 size={18} /> Ver institución</Link>
+        : <Link to="/attendance" className="button button-sun"><QrCode size={18} /> Tomar asistencia</Link>}
     </header>
 
     {nextStep !== -1 && <section className="content-card" aria-labelledby="steps-title">

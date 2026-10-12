@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import mongoose from "mongoose";
+import { randomUUID } from "node:crypto";
 import request from "supertest";
 import type { Express } from "express";
 import { ADMIN_CONTACT_EMAIL } from "../../../shared/limits.js";
@@ -291,5 +292,48 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
       expect((await agent.get("/api/learning/attendance/sessions?date=not-a-date")).status).toBe(400);
       expect((await agent.get("/api/students/zzz")).status).toBe(400);
     });
+  });
+  describe("QR del estudiante en varias materias", () => {
+    it("el mismo QR registra la asistencia de la clase donde se escanea, sin mezclar materias ni cursos", async () => {
+      const { Student } = await import("../models/index.js");
+      const agent = await register("docente-qr-materias", "PERSONAL");
+      const course = (await createCourse(agent, "9")).body.item.id;
+      const otherCourse = (await createCourse(agent, "10")).body.item.id;
+      const physics = (await post(agent, "/api/learning/subjects", { name: "Física", courseGroupIds: [course, otherCourse] })).body.item.id;
+      const chemistry = (await post(agent, "/api/learning/subjects", { name: "Química", courseGroupIds: [course] })).body.item.id;
+      const schedule = (courseGroupId: string, subjectId: string) => post(agent, "/api/learning/schedules", { courseGroupId, subjectId, weekdays: [1, 2, 3, 4, 5, 6, 7], startTime: "00:00", endTime: "23:59", toleranceMinutes: 10 });
+      const physicsSchedule = (await schedule(course, physics)).body.item.id;
+      const chemistrySchedule = (await schedule(course, chemistry)).body.item.id;
+      const otherSchedule = (await schedule(otherCourse, physics)).body.item.id;
+      const created = await post(agent, "/api/students", { firstName: "Laura", lastName: "Qr", courseGroupId: course });
+      const tokenHash = (await Student.findById(created.body.student.id).select("qrTokenHash"))!.qrTokenHash as string;
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: (await agent.get("/api/learning/attendance/context")).body.timezone }).format(new Date());
+      const open = async (scheduleId: string) => (await post(agent, "/api/learning/attendance/sessions", { scheduleId, dateKey: today })).body.item.id as string;
+      const [physicsSession, chemistrySession, otherSession] = [await open(physicsSchedule), await open(chemistrySchedule), await open(otherSchedule)];
+      const scan = (classSessionId: string) => post(agent, `/api/learning/attendance/sessions/${classSessionId}/scan`, { tokenHash, clientEventId: randomUUID() });
+      const records = async (sessionId: string) => (await agent.get(`/api/learning/attendance/sessions/${sessionId}`)).body.items.filter((row: { hasRecord: boolean }) => row.hasRecord);
+
+      // Escanear en Física registra solo Física.
+      const first = await scan(physicsSession);
+      expect(first.status, JSON.stringify(first.body)).toBe(200);
+      expect(first.body.duplicate).toBe(false);
+      expect(await records(physicsSession)).toHaveLength(1);
+      expect(await records(chemistrySession)).toHaveLength(0);
+      // El mismo QR en Química es un registro nuevo, no un duplicado de Física.
+      const second = await scan(chemistrySession);
+      expect(second.body.duplicate).toBe(false);
+      expect(await records(chemistrySession)).toHaveLength(1);
+      // Repetir en la misma clase sí es duplicado.
+      expect((await scan(physicsSession)).body.duplicate).toBe(true);
+      expect(await records(physicsSession)).toHaveLength(1);
+      // Cada registro queda con la materia de su clase.
+      const { Attendance } = await import("../models/learning.js");
+      const rows = await Attendance.find({ studentId: created.body.student.id }).lean();
+      expect(rows.map((row) => String(row.subjectId)).sort()).toEqual([physics, chemistry].sort());
+      // Una clase de otro curso rechaza al estudiante.
+      const wrong = await scan(otherSession);
+      expect(wrong.status).toBe(409);
+      expect(wrong.body.error.code).toBe("STUDENT_NOT_IN_GROUP");
+    }, 90_000);
   });
 });

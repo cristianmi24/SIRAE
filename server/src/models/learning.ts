@@ -43,7 +43,9 @@ const attendanceSchema = new Schema<AttendanceRecord>({ institutionId: { type: o
 attendanceSchema.index({ institutionId: 1, classSessionId: 1, studentId: 1 }, { unique: true });
 attendanceSchema.index({ institutionId: 1, studentId: 1, recordedAt: -1 });
 attendanceSchema.index({ institutionId: 1, courseGroupId: 1, recordedAt: -1 });
-attendanceSchema.index({ institutionId: 1, clientEventId: 1 }, { unique: true, sparse: true });
+// Solo registros con identificador de evento: un índice "sparse" compuesto también indexaba los vacíos
+// (por institución) y el segundo registro sin identificador —p. ej. las ausencias del cierre— chocaba.
+attendanceSchema.index({ institutionId: 1, clientEventId: 1 }, { unique: true, partialFilterExpression: { clientEventId: { $type: "string" } } });
 
 export interface ObservationRecord { institutionId: Types.ObjectId; studentId: Types.ObjectId; type: string; description: string; teacherUserId: Types.ObjectId; priority: "LOW" | "NORMAL" | "HIGH"; followUp?: string; status: "OPEN" | "IN_PROGRESS" | "CLOSED"; observedAt: Date }
 const observationSchema = new Schema<ObservationRecord>({ institutionId: { type: oid, ref: "Institution", required: true, index: true }, studentId: { type: oid, ref: "Student", required: true, index: true }, type: { type: String, required: true, trim: true, maxlength: 64 }, description: { type: String, required: true, trim: true, maxlength: 3000 }, teacherUserId: { type: oid, ref: "User", required: true }, priority: { type: String, enum: ["LOW", "NORMAL", "HIGH"], default: "NORMAL" }, followUp: { type: String, trim: true, maxlength: 2000 }, status: { type: String, enum: ["OPEN", "IN_PROGRESS", "CLOSED"], default: "OPEN" }, observedAt: { type: Date, required: true, default: Date.now } }, base);

@@ -39,3 +39,5 @@ tmp/
 .DS_Store
 Thumbs.db
 desktop.ini
+# Original pesado del fondo del saludo (se usa public/qr.webp)
+public/qr.png

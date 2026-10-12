@@ -49,10 +49,17 @@ export function StudentsPage() {
     </header>
     {notice && <p className={`notice notice-${notice.tone}`} role="status">{notice.text}</p>}
 
-    {courses.length > 0 && <div className="chip-filter" role="group" aria-label="Filtrar por curso">
-      <button className={`filter-chip ${courseGroupId === "" ? "is-active" : ""}`} onClick={() => setCourseGroupId("")}>Todos los cursos</button>
-      {courses.map((group) => <button key={group.id} className={`filter-chip ${courseGroupId === group.id ? "is-active" : ""}`} onClick={() => setCourseGroupId(group.id)}>Curso {group.grade} {group.group}</button>)}
-    </div>}
+    {courses.length > 0 && (courses.length <= 6
+      ? <div className="chip-filter" role="group" aria-label="Filtrar por curso">
+        <button className={`filter-chip ${courseGroupId === "" ? "is-active" : ""}`} onClick={() => setCourseGroupId("")}>Todos los cursos</button>
+        {courses.map((group) => <button key={group.id} className={`filter-chip ${courseGroupId === group.id ? "is-active" : ""}`} onClick={() => setCourseGroupId(group.id)}>Curso {group.grade} {group.group}</button>)}
+      </div>
+      : <label className="form-field course-select"><span>Curso ({courses.length})</span>
+        <select aria-label="Filtrar por curso" value={courseGroupId} onChange={(event) => setCourseGroupId(event.target.value)}>
+          <option value="">Todos los cursos</option>
+          {[...new Set(courses.map((group) => group.grade))].map((grade) => <optgroup key={grade} label={grade}>{courses.filter((group) => group.grade === grade).map((group) => <option key={group.id} value={group.id}>{group.grade} {group.group}</option>)}</optgroup>)}
+        </select>
+      </label>)}
 
     <section className="content-card">
       <div className="filter-bar">
