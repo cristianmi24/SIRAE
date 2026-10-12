@@ -39,46 +39,83 @@ async function report(kind: "runReport" | "runRealtimeReport", propertyId: strin
   return ((await response.json()) as { rows?: Row[] }).rows ?? [];
 }
 
+type Named = { name: string; value: number };
 export interface AnalyticsSummary {
   configured: boolean; days: number;
-  totals?: { users: number; newUsers: number; sessions: number; pageViews: number; avgSessionSeconds: number };
-  realtimeUsers?: number;
-  daily?: { date: string; users: number; pageViews: number }[];
-  pages?: { path: string; views: number }[];
-  countries?: { name: string; users: number }[];
-  devices?: { name: string; users: number }[];
+  totals?: { users: number; newUsers: number; sessions: number; pageViews: number; avgSessionSeconds: number; engagementRate: number; bounceRate: number; events: number; viewsPerSession: number };
+  daily?: { date: string; users: number; sessions: number; pageViews: number }[];
+  hourly?: { hour: number; users: number }[];
+  pages?: { path: string; views: number; users: number }[];
+  channels?: Named[]; countries?: Named[]; cities?: Named[]; devices?: Named[]; browsers?: Named[]; systems?: Named[]; visitorTypes?: Named[];
+}
+export interface AnalyticsRealtime {
+  configured: boolean; users: number; viewsLast30: number;
+  minutes?: { minutesAgo: number; users: number }[];
+  pages?: { name: string; users: number }[];
+  countries?: Named[]; cities?: Named[]; devices?: Named[];
 }
 
-const cache = new Map<number, { at: number; value: AnalyticsSummary }>();
+const cache = new Map<string, { at: number; ttl: number; value: unknown }>();
+async function cached<T>(key: string, ttl: number, load: () => Promise<T>): Promise<T> {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < hit.ttl) return hit.value as T;
+  const value = await load();
+  cache.set(key, { at: Date.now(), ttl, value });
+  return value;
+}
+
+const num = (row: Row | undefined, index: number) => Number(row?.metricValues?.[index]?.value ?? 0);
+const label = (row: Row, index = 0) => row.dimensionValues?.[index]?.value ?? "";
+const topBy = (metric: string) => [{ metric: { metricName: metric }, desc: true }];
+const named = (rows: Row[]): Named[] => rows.map((row) => ({ name: label(row) || "(sin datos)", value: num(row, 0) }));
 
 export async function analyticsSummary(days: number): Promise<AnalyticsSummary> {
   const found = credentials();
   if (!found) return { configured: false, days };
-  const cached = cache.get(days);
-  if (cached && Date.now() - cached.at < 60_000) return cached.value;
-  const bearer = await accessToken(found.account);
-  const dateRanges = [{ startDate: `${days}daysAgo`, endDate: "today" }];
-  const num = (row: Row | undefined, index: number) => Number(row?.metricValues?.[index]?.value ?? 0);
-  const run = (body: object, kind: "runReport" | "runRealtimeReport" = "runReport") => report(kind, found.propertyId, bearer, body);
-  const topBy = (metric: string) => [{ metric: { metricName: metric }, desc: true }];
-  const [total, daily, pages, countries, devices, realtime] = await Promise.all([
-    run({ dateRanges, metrics: [{ name: "activeUsers" }, { name: "newUsers" }, { name: "sessions" }, { name: "screenPageViews" }, { name: "averageSessionDuration" }] }),
-    run({ dateRanges, dimensions: [{ name: "date" }], metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }], orderBys: [{ dimension: { dimensionName: "date" } }] }),
-    run({ dateRanges, dimensions: [{ name: "pagePath" }], metrics: [{ name: "screenPageViews" }], orderBys: topBy("screenPageViews"), limit: 10 }),
-    run({ dateRanges, dimensions: [{ name: "country" }], metrics: [{ name: "activeUsers" }], orderBys: topBy("activeUsers"), limit: 8 }),
-    run({ dateRanges, dimensions: [{ name: "deviceCategory" }], metrics: [{ name: "activeUsers" }], orderBys: topBy("activeUsers") }),
-    run({ metrics: [{ name: "activeUsers" }] }, "runRealtimeReport"),
-  ]);
-  const label = (row: Row) => row.dimensionValues?.[0]?.value ?? "";
-  const value: AnalyticsSummary = {
-    configured: true, days,
-    totals: { users: num(total[0], 0), newUsers: num(total[0], 1), sessions: num(total[0], 2), pageViews: num(total[0], 3), avgSessionSeconds: Math.round(num(total[0], 4)) },
-    realtimeUsers: num(realtime[0], 0),
-    daily: daily.map((row) => ({ date: label(row), users: num(row, 0), pageViews: num(row, 1) })),
-    pages: pages.map((row) => ({ path: label(row), views: num(row, 0) })),
-    countries: countries.map((row) => ({ name: label(row), users: num(row, 0) })),
-    devices: devices.map((row) => ({ name: label(row), users: num(row, 0) })),
-  };
-  cache.set(days, { at: Date.now(), value });
-  return value;
+  return cached(`summary:${days}`, 60_000, async () => {
+    const bearer = await accessToken(found.account);
+    const dateRanges = [{ startDate: `${days}daysAgo`, endDate: "today" }];
+    const run = (body: object) => report("runReport", found.propertyId, bearer, { dateRanges, ...body });
+    const by = (dimension: string, limit = 8) => run({ dimensions: [{ name: dimension }], metrics: [{ name: "activeUsers" }], orderBys: topBy("activeUsers"), limit });
+    const [total, daily, hourly, pages, channels, countries, cities, devices, browsers, systems, visitors] = await Promise.all([
+      run({ metrics: [{ name: "activeUsers" }, { name: "newUsers" }, { name: "sessions" }, { name: "screenPageViews" }, { name: "averageSessionDuration" }, { name: "engagementRate" }, { name: "bounceRate" }, { name: "eventCount" }, { name: "screenPageViewsPerSession" }] }),
+      run({ dimensions: [{ name: "date" }], metrics: [{ name: "activeUsers" }, { name: "sessions" }, { name: "screenPageViews" }], orderBys: [{ dimension: { dimensionName: "date" } }] }),
+      run({ dimensions: [{ name: "hour" }], metrics: [{ name: "activeUsers" }], orderBys: [{ dimension: { dimensionName: "hour" } }] }),
+      run({ dimensions: [{ name: "pagePath" }], metrics: [{ name: "screenPageViews" }, { name: "activeUsers" }], orderBys: topBy("screenPageViews"), limit: 10 }),
+      run({ dimensions: [{ name: "sessionDefaultChannelGroup" }], metrics: [{ name: "sessions" }], orderBys: topBy("sessions"), limit: 8 }),
+      by("country"), by("city"), by("deviceCategory"), by("browser"), by("operatingSystem"), by("newVsReturning"),
+    ]);
+    const hours = new Map(hourly.map((row) => [Number(label(row)), num(row, 0)]));
+    return {
+      configured: true, days,
+      totals: { users: num(total[0], 0), newUsers: num(total[0], 1), sessions: num(total[0], 2), pageViews: num(total[0], 3), avgSessionSeconds: Math.round(num(total[0], 4)), engagementRate: num(total[0], 5), bounceRate: num(total[0], 6), events: num(total[0], 7), viewsPerSession: num(total[0], 8) },
+      daily: daily.map((row) => ({ date: label(row), users: num(row, 0), sessions: num(row, 1), pageViews: num(row, 2) })),
+      hourly: Array.from({ length: 24 }, (_, hour) => ({ hour, users: hours.get(hour) ?? 0 })),
+      pages: pages.map((row) => ({ path: label(row), views: num(row, 0), users: num(row, 1) })),
+      channels: named(channels), countries: named(countries), cities: named(cities), devices: named(devices), browsers: named(browsers), systems: named(systems), visitorTypes: named(visitors),
+    };
+  });
+}
+
+// Últimos 30 minutos, minuto a minuto (datos en vivo de Google Analytics).
+export async function analyticsRealtime(): Promise<AnalyticsRealtime> {
+  const found = credentials();
+  if (!found) return { configured: false, users: 0, viewsLast30: 0 };
+  return cached("realtime", 10_000, async () => {
+    const bearer = await accessToken(found.account);
+    const run = (body: object) => report("runRealtimeReport", found.propertyId, bearer, body);
+    const by = (dimension: string, limit = 6) => run({ dimensions: [{ name: dimension }], metrics: [{ name: "activeUsers" }], orderBys: topBy("activeUsers"), limit });
+    const [now, minutes, pages, countries, cities, devices] = await Promise.all([
+      run({ metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }] }),
+      run({ dimensions: [{ name: "minutesAgo" }], metrics: [{ name: "activeUsers" }] }),
+      by("unifiedScreenName", 8), by("country"), by("city"), by("deviceCategory"),
+    ]);
+    const perMinute = new Map(minutes.map((row) => [Number(label(row)), num(row, 0)]));
+    return {
+      configured: true, users: num(now[0], 0), viewsLast30: num(now[0], 1),
+      minutes: Array.from({ length: 30 }, (_, index) => ({ minutesAgo: 29 - index, users: perMinute.get(29 - index) ?? 0 })),
+      pages: pages.map((row) => ({ name: label(row) || "(sin título)", users: num(row, 0) })),
+      countries: named(countries), cities: named(cities), devices: named(devices),
+    };
+  });
 }

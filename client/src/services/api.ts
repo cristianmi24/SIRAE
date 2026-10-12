@@ -38,7 +38,9 @@ export interface GradeCategoryDto { id: string; periodId: string; subjectId: str
 export interface AssessmentDto { id: string; periodId: string; subjectId: string; categoryId: string; name: string; weightPercent: number; dueAt?: string }
 export interface GradeRowDto { id: string; studentId: string; studentName: string; assessment: { _id: string; name: string; periodId: string; periodName: string; subjectId: string; categoryId: string; weightPercent: number }; value: number; feedback?: string }
 export interface ScheduleBreakDto { id: string; courseGroupId?: string; label: string; weekdays: number[]; startTime: string; endTime: string }
-export interface AnalyticsSummaryDto { configured: boolean; days: number; totals?: { users: number; newUsers: number; sessions: number; pageViews: number; avgSessionSeconds: number }; realtimeUsers?: number; daily?: { date: string; users: number; pageViews: number }[]; pages?: { path: string; views: number }[]; countries?: { name: string; users: number }[]; devices?: { name: string; users: number }[] }
+export interface AnalyticsNamed { name: string; value: number }
+export interface AnalyticsSummaryDto { configured: boolean; days: number; totals?: { users: number; newUsers: number; sessions: number; pageViews: number; avgSessionSeconds: number; engagementRate: number; bounceRate: number; events: number; viewsPerSession: number }; daily?: { date: string; users: number; sessions: number; pageViews: number }[]; hourly?: { hour: number; users: number }[]; pages?: { path: string; views: number; users: number }[]; channels?: AnalyticsNamed[]; countries?: AnalyticsNamed[]; cities?: AnalyticsNamed[]; devices?: AnalyticsNamed[]; browsers?: AnalyticsNamed[]; systems?: AnalyticsNamed[]; visitorTypes?: AnalyticsNamed[] }
+export interface AnalyticsRealtimeDto { configured: boolean; users: number; viewsLast30: number; minutes?: { minutesAgo: number; users: number }[]; pages?: { name: string; users: number }[]; countries?: AnalyticsNamed[]; cities?: AnalyticsNamed[]; devices?: AnalyticsNamed[] }
 export interface PlatformLimitsInput { courses?: number | null; teachers?: number | null; coursesPerTeacher?: number | null }
 export interface PlatformOverviewDto {
   totals: { institutions: number; personalClassrooms: number; teachers: number; activeTeachers7d: number; activeTeachers30d: number; students: number; courses: number; sessions: number; grades: number; observations: number };
@@ -96,6 +98,7 @@ export const api = {
   getMe: () => request<AuthState>("/api/auth/me"),
   getPlatformOverview: () => request<PlatformOverviewDto>("/api/platform/overview"),
   getPlatformAnalytics: (days: number) => request<AnalyticsSummaryDto>(`/api/platform/analytics?days=${days}`),
+  getPlatformRealtime: () => request<AnalyticsRealtimeDto>("/api/platform/analytics/realtime"),
   createPlatformInstitution: (input: { name: string; type: "INSTITUTION" | "PERSONAL"; adminEmail?: string; limits?: PlatformLimitsInput }) => request<{ item: { id: string; name: string; adminStatus: "NONE" | "ASSIGNED" | "INVITED" } }>("/api/platform/institutions", json("POST", input)),
   updatePlatformInstitution: (id: string, input: { name?: string; active?: boolean; limits?: PlatformLimitsInput }) => request<{ item: { id: string } }>(`/api/platform/institutions/${id}`, json("PATCH", input)),
   login: (input: { email: string; password: string }) => request<{ ok: true }>("/api/auth/login", json("POST", input)),
