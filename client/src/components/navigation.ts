@@ -10,6 +10,7 @@ export const monitoring: NavItem = { to: "/", label: "Monitoreo", icon: Activity
 export const platformInstitutions: NavItem = { to: "/institutions", label: "Instituciones", icon: Building2, tone: "violet", shortcut: "2" };
 export const platformAdminsItem: NavItem = { to: "/admins", label: "Administradores", icon: ShieldCheck, tone: "pink", shortcut: "3" };
 export const platformWebStats: NavItem = { to: "/analytics", label: "Analytics", icon: TrendingUp, tone: "blue", shortcut: "4" };
+export const platformTeachers: NavItem = { to: "/teachers", label: "Docentes", icon: Users, tone: "green", shortcut: "5" };
 export const sections: NavSection[] = [
   { title: "Preparar el aula", items: [
     { to: "/students", label: "Estudiantes", icon: Users, tone: "blue", step: 1, shortcut: "2" },
@@ -39,7 +40,7 @@ export function adminItemsFor(user: { role: string | null; accountType?: string 
 }
 
 export function navItemsFor(user: { role: string | null; platformAdmin?: boolean; accountType?: string }): NavItem[] {
-  if (user.platformAdmin) return [monitoring, platformInstitutions, platformAdminsItem, platformWebStats];
+  if (user.platformAdmin) return [monitoring, platformInstitutions, platformAdminsItem, platformTeachers, platformWebStats];
   return [home, ...sections.flatMap((section) => section.items), ...adminItemsFor(user)];
 }
 

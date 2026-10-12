@@ -36,6 +36,7 @@ const NotFoundPage = lazyPage(() => import("../pages/NotFoundPage").then((page) 
 const PlatformInstitutionsPage = lazyPage(() => import("../pages/PlatformInstitutionsPage").then((page) => ({ default: page.PlatformInstitutionsPage })));
 const PlatformAdminsPage = lazyPage(() => import("../pages/PlatformAdminsPage").then((page) => ({ default: page.PlatformAdminsPage })));
 const WebAnalyticsPage = lazyPage(() => import("../pages/WebAnalyticsPage").then((page) => ({ default: page.WebAnalyticsPage })));
+const PlatformTeachersPage = lazyPage(() => import("../pages/PlatformTeachersPage").then((page) => ({ default: page.PlatformTeachersPage })));
 const InstitutionPage = lazyPage(() => import("../pages/InstitutionPage").then((page) => ({ default: page.InstitutionPage })));
 const AuditPage = lazyPage(() => import("../pages/AuditPage").then((page) => ({ default: page.AuditPage })));
 
@@ -159,7 +160,7 @@ function AuthenticatedApplication() {
   if (!auth.data?.authenticated || !auth.data.user) return <SignInScreen />;
 
   if (auth.data.user.platformAdmin) {
-    return <AppShell user={auth.data.user}><Suspense fallback={<LoadingState label="Abriendo módulo…" />}><Routes><Route path="/" element={<MonitoringPage />} /><Route path="/institutions" element={<PlatformInstitutionsPage />} /><Route path="/admins" element={<PlatformAdminsPage />} /><Route path="/analytics/*" element={<WebAnalyticsPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></Suspense></AppShell>;
+    return <AppShell user={auth.data.user}><Suspense fallback={<LoadingState label="Abriendo módulo…" />}><Routes><Route path="/" element={<MonitoringPage />} /><Route path="/institutions" element={<PlatformInstitutionsPage />} /><Route path="/admins" element={<PlatformAdminsPage />} /><Route path="/teachers" element={<PlatformTeachersPage />} /><Route path="/analytics/*" element={<WebAnalyticsPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></Suspense></AppShell>;
   }
   return (
     <AppShell user={auth.data.user}>
