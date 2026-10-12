@@ -1074,3 +1074,21 @@ body.camera-open { overflow: hidden; }
   .marketing-footer a + a { margin-left: 0; }
 }
 .complaint-head .code-tag { flex: 0 0 auto; white-space: nowrap; }
+
+/* ───────── Confirmación al escanear ───────── */
+.scan-flash { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 1.5rem; background: rgba(4, 10, 30, .45); animation: scan-fade .15s ease-out; cursor: pointer; }
+.scan-flash-card { display: grid; justify-items: center; gap: .35rem; width: min(100%, 360px); padding: 1.6rem 1.4rem; border-radius: 22px; background: #fff; color: #10172f; text-align: center; box-shadow: 0 24px 60px rgba(0, 0, 0, .35); animation: scan-pop .22s cubic-bezier(.2, 1.4, .4, 1); }
+.scan-flash-card strong { font-size: 1.45rem; font-weight: 900; line-height: 1.2; word-break: break-word; }
+.scan-flash-card > span:not(.scan-flash-icon) { font-size: 1rem; font-weight: 800; color: #4a5378; }
+.scan-flash-card time { font-size: 1.05rem; font-weight: 900; font-variant-numeric: tabular-nums; color: #4a5378; }
+.scan-flash-icon { display: grid; place-items: center; width: 96px; height: 96px; margin-bottom: .3rem; border-radius: 50%; color: #fff; }
+.scan-flash-ok .scan-flash-icon { background: #16a34a; box-shadow: 0 0 0 10px rgba(22, 163, 74, .18); }
+.scan-flash-late .scan-flash-icon { background: #16a34a; box-shadow: 0 0 0 10px rgba(224, 138, 0, .3); }
+.scan-flash-late .scan-flash-card > span:not(.scan-flash-icon) { color: #a35f00; }
+.scan-flash-duplicate .scan-flash-icon { background: #e08a00; box-shadow: 0 0 0 10px rgba(224, 138, 0, .2); }
+.scan-flash-error .scan-flash-icon { background: #dc2626; box-shadow: 0 0 0 10px rgba(220, 38, 38, .18); }
+.scan-flash-offline .scan-flash-icon { background: #4361ee; box-shadow: 0 0 0 10px rgba(67, 97, 238, .18); }
+.scan-flash-ok .scan-flash-card { border: 3px solid #16a34a; }
+@keyframes scan-fade { from { opacity: 0; } }
+@keyframes scan-pop { from { transform: scale(.85); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .scan-flash, .scan-flash-card { animation: none; } }
