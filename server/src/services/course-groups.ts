@@ -1,8 +1,9 @@
-import { CourseGroup, Institution } from "../models/index.js";
+import { CourseGroup } from "../models/index.js";
 import type { AuthContext } from "./auth-context.js";
 import { conflict } from "../utils/errors.js";
 import { normalizeForLookup } from "../utils/text.js";
 import { z } from "zod";
+import { assertCanCreateCourses, rollbackCourseIfOverLimit } from "./account-limits.js";
 
 const courseGroupInputSchema = z.object({
   grade: z.string().trim().min(1).max(64),
@@ -25,10 +26,8 @@ export async function listCourseGroups(context: AuthContext) {
 }
 
 export async function createCourseGroup(context: AuthContext, input: CourseGroupInput) {
-  const institution = await Institution.findById(context.institution.id).select("type");
-  if (institution?.type === "PERSONAL" && await CourseGroup.countDocuments({ institutionId: context.institution.id, active: true }) >= 6) {
-    throw conflict("El aula personal permite un máximo de 6 cursos.");
-  }
+  // Docente: máximo 4 cursos; institución: máximo 5 docentes × 6 cursos.
+  await assertCanCreateCourses(context);
   try {
     const group = await CourseGroup.create({
       institutionId: context.institution.id,
@@ -39,6 +38,7 @@ export async function createCourseGroup(context: AuthContext, input: CourseGroup
       academicYear: input.academicYear,
       active: true,
     });
+    await rollbackCourseIfOverLimit(context, group._id);
     return {
       id: group._id.toString(),
       grade: group.grade,

@@ -1,7 +1,23 @@
+import type { AccountType } from "./limits";
+
 export const membershipRoles = ["ADMIN", "DOCENTE"] as const;
 export type MembershipRole = (typeof membershipRoles)[number];
 
 export type StudentStatus = "ACTIVO" | "INACTIVO";
+
+export interface AccountPlanDto {
+  accountType: AccountType;
+  contactEmail: string;
+  limits: { courses: number; teachers?: number; coursesPerTeacher?: number };
+  usage: { courses: number; teachers?: number; ownCourses?: number };
+}
+
+export interface WorkspaceDto {
+  institutionId: string;
+  name: string;
+  type: AccountType;
+  role: MembershipRole;
+}
 
 export interface AuthUserDto {
   id: string;
@@ -9,11 +25,15 @@ export interface AuthUserDto {
   email?: string;
   role: MembershipRole | null;
   platformAdmin?: boolean;
+  accountType?: AccountType;
   institution?: {
     id: string;
     name: string;
     timezone: string;
+    type?: AccountType;
   };
+  workspaces?: WorkspaceDto[];
+  plan?: AccountPlanDto;
 }
 
 export interface StudentDto {

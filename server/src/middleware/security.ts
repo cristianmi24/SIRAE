@@ -21,6 +21,24 @@ export async function requireAuthenticatedContext(
   }
 }
 
+// Defensa contra inyección de operadores de MongoDB ($where, $gt, $ne…) y contaminación de
+// prototipos: ningún cuerpo JSON legítimo de SIRAE usa claves que empiecen por "$" o "__proto__".
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+function hasUnsafeKeys(value: unknown, depth = 0): boolean {
+  if (depth > 20) return true;
+  if (Array.isArray(value)) return value.some((item) => hasUnsafeKeys(item, depth + 1));
+  if (!value || typeof value !== "object") return false;
+  return Object.keys(value).some((key) => key.startsWith("$") || FORBIDDEN_KEYS.has(key) || hasUnsafeKeys((value as Record<string, unknown>)[key], depth + 1));
+}
+
+export function rejectUnsafePayload(request: Request, _response: Response, next: NextFunction): void {
+  if (hasUnsafeKeys(request.body) || hasUnsafeKeys(request.query) || hasUnsafeKeys(request.params)) {
+    next(new AppError(400, "UNSAFE_PAYLOAD", "La solicitud contiene campos no permitidos."));
+    return;
+  }
+  next();
+}
+
 export function requireRole(...roles: MembershipRole[]) {
   return (request: Request, _response: Response, next: NextFunction): void => {
     const context = request.auth;
@@ -70,6 +88,12 @@ export function errorHandler(
         message: "Ya existe un registro con esa información en esta institución.",
       },
     });
+    return;
+  }
+
+  // Identificadores mal formados u otros valores que no encajan con el esquema: error del cliente.
+  if (typeof error === "object" && error && "name" in error && (error as { name?: string }).name === "CastError") {
+    response.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Uno de los valores enviados no es válido." } });
     return;
   }
 

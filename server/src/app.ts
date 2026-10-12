@@ -15,6 +15,7 @@ import { protectFromCrossSiteRequests } from "./middleware/csrf.js";
 import {
   errorHandler,
   notFoundHandler,
+  rejectUnsafePayload,
   requireAuthenticatedContext,
 } from "./middleware/security.js";
 
@@ -51,6 +52,7 @@ export function createApp(): Express {
     }),
   );
   app.use("/api", protectFromCrossSiteRequests);
+  app.use("/api", rejectUnsafePayload);
   // Se cuenta por dispositivo (identificador generado por el sistema), sin usar direcciones IP.
   const publicAttendanceLimiter = rateLimit({ windowMs: 60 * 1000, limit: 12, keyGenerator: (request) => typeof request.cookies?.aulanexo_device === "string" ? request.cookies.aulanexo_device : "sin-dispositivo", validate: false, standardHeaders: "draft-7", legacyHeaders: false, message: { error: { code: "RATE_LIMITED", message: "Demasiados intentos. Espera un minuto." } } });
 

@@ -4,6 +4,7 @@ import type { AuthContext } from "./auth-context.js";
 import { actorId, assertGroupAccess, audit, forbiddenEntity, objectId, tenantId } from "./learning-common.js";
 import { isoWeekday, localDateTime } from "../utils/school-time.js";
 import { AppError } from "../utils/errors.js";
+import { addCourseToTeacher } from "./account-limits.js";
 
 export async function listSchedules(context: AuthContext) {
   const groupScope = context.membership.role === "ADMIN" ? {} : { courseGroupId: { $in: context.membership.courseGroupIds.map((id) => objectId(id)) } };
@@ -20,7 +21,8 @@ export async function createSchedule(context: AuthContext, input: { courseGroupI
   const teacherMembership = await Membership.findOne({ userId: teacherId, institutionId: tenantId(context), active: true });
   if (!teacherMembership) throw new AppError(400, "TEACHER_NOT_ASSIGNED", "El docente no pertenece a esta institución.");
   if (context.membership.role !== "ADMIN" && !teacherId.equals(actorId(context))) throw new AppError(403, "FORBIDDEN", "Solo un administrador puede asignar otro docente.");
-  if (teacherMembership.role === "DOCENTE") await Membership.updateOne({ _id: teacherMembership._id }, { $addToSet: { courseGroupIds: groupId } });
+  // Al asignar la clase a un docente se le asigna el curso, sin superar su máximo de cursos.
+  if (teacherMembership.role === "DOCENTE") await addCourseToTeacher(context, teacherMembership._id, groupId);
   const row = await Schedule.create({ institutionId: tenantId(context), courseGroupId: groupId, subjectId, teacherUserId: teacherId, weekdays: [...new Set(input.weekdays)].sort(), startTime: input.startTime, endTime: input.endTime, toleranceMinutes: input.toleranceMinutes, timezone: context.institution.timezone, createdBy: actorId(context) });
   await audit(context, "SCHEDULE_CREATED", "Schedule", row._id, undefined, { courseGroupId: String(groupId), subjectId: String(subjectId), toleranceMinutes: row.toleranceMinutes });
   return { id: String(row._id), courseGroupId: String(groupId), subjectId: String(subjectId), teacherUserId: String(teacherId), weekdays: row.weekdays, startTime: row.startTime, endTime: row.endTime, toleranceMinutes: row.toleranceMinutes, timezone: row.timezone, active: row.active };
@@ -51,7 +53,7 @@ export async function updateSchedule(context: AuthContext, id: string, input: { 
   row.endTime = endTime;
   if (input.toleranceMinutes !== undefined) row.toleranceMinutes = input.toleranceMinutes;
   row.timezone = context.institution.timezone;
-  if (teacherMembership.role === "DOCENTE") await Membership.updateOne({ _id: teacherMembership._id }, { $addToSet: { courseGroupIds: groupId } });
+  if (teacherMembership.role === "DOCENTE") await addCourseToTeacher(context, teacherMembership._id, groupId);
   await row.save();
   await audit(context, "SCHEDULE_UPDATED", "Schedule", row._id, before, { courseGroupId: String(groupId), subjectId: String(subjectId), teacherUserId: String(teacherId), weekdays: row.weekdays, startTime, endTime, toleranceMinutes: row.toleranceMinutes, timezone: row.timezone });
   return { id: String(row._id), courseGroupId: String(groupId), subjectId: String(subjectId), teacherUserId: String(teacherId), weekdays: row.weekdays, startTime, endTime, toleranceMinutes: row.toleranceMinutes, timezone: row.timezone, active: row.active };
@@ -70,6 +72,7 @@ export async function deactivateSchedule(context: AuthContext, id: string) {
 type SessionRow = { _id: unknown; scheduleId: unknown; courseGroupId: unknown; subjectId: unknown; dateKey: string; startsAt: Date; endsAt: Date; timezone: string; state: "OPEN" | "CLOSED"; scheduledStartsAt?: Date | null; toleranceMinutes?: number | null; adjustedAt?: Date | null };
 function sessionDto(x: SessionRow) { return { id: String(x._id), scheduleId: String(x.scheduleId), courseGroupId: String(x.courseGroupId), subjectId: String(x.subjectId), dateKey: x.dateKey, startsAt: x.startsAt.toISOString(), endsAt: x.endsAt.toISOString(), timezone: x.timezone, state: x.state, scheduledStartsAt: x.scheduledStartsAt?.toISOString(), toleranceMinutes: x.toleranceMinutes ?? undefined, adjustedAt: x.adjustedAt?.toISOString() }; }
 export async function listSessions(context: AuthContext, dateKey?: string) {
+  if (dateKey !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new AppError(400, "VALIDATION_ERROR", "Usa una fecha válida (AAAA-MM-DD).");
   const groupScope = context.membership.role === "ADMIN" ? {} : { courseGroupId: { $in: context.membership.courseGroupIds.map((id) => objectId(id)) } };
   const parts = dateKey?.split("-").map(Number);
   const nextDateKey = parts?.length === 3 ? new Date(Date.UTC(parts[0]!, parts[1]! - 1, parts[2]! + 1)).toISOString().slice(0, 10) : undefined;

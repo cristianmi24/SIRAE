@@ -102,3 +102,29 @@ export async function closeClassSession(context: AuthContext, sessionId: string)
   await audit(context, "CLASS_SESSION_CLOSED", "ClassSession", session._id, undefined, { absencesCreated: absences });
   return { id: String(session._id), state: session.state, absencesCreated: absences };
 }
+// Reabre una clase cerrada. No toca las reglas de tiempo (inicio, fin, tolerancia ni enlaces):
+// solo devuelve la sesión a "Abierta" para que vuelvan a funcionar el QR y el enlace.
+// - Los registros reales (a tiempo, tarde, justificadas, marcas a mano) se conservan.
+// - Las ausencias automáticas que generó el cierre se retiran (el próximo cierre las vuelve a crear);
+//   así quien llegue ahora puede registrarse. El índice único sesión+estudiante evita duplicados.
+export async function reopenClassSession(context: AuthContext, sessionId: string) {
+  const session = await ClassSession.findOne({ _id: objectId(sessionId), institutionId: tenantId(context) });
+  if (!session) throw forbiddenEntity();
+  assertGroupAccess(context, String(session.courseGroupId));
+  // Un docente solo reabre sus propias clases; el administrador de la institución, cualquiera de ella.
+  if (context.membership.role !== "ADMIN" && !session.teacherUserId.equals(actorId(context))) throw forbiddenEntity();
+  if (session.state === "OPEN") return { id: String(session._id), state: session.state, absencesRemoved: 0, alreadyOpen: true };
+  const now = new Date();
+  // Si el enlace de la jornada ya venció mientras la clase estaba cerrada, queda registrado como
+  // terminado para que el cierre automático de ese enlace no vuelva a cerrar la clase reabierta.
+  const settleExpiredLink = session.linkToken && session.linkExpiresAt && session.linkExpiresAt <= now && !session.linkClosedAt ? { linkClosedAt: now } : {};
+  const reopened = await ClassSession.findOneAndUpdate(
+    { _id: session._id, institutionId: tenantId(context), state: "CLOSED" },
+    { $set: { state: "OPEN", reopenedAt: now, reopenedBy: actorId(context), ...settleExpiredLink }, $unset: { closedAt: 1 }, $inc: { reopenCount: 1 } },
+    { new: true },
+  );
+  if (!reopened) return { id: String(session._id), state: "OPEN" as const, absencesRemoved: 0, alreadyOpen: true };
+  const removed = await Attendance.deleteMany({ institutionId: tenantId(context), classSessionId: session._id, source: "SESSION_CLOSE", status: "ABSENT" });
+  await audit(context, "CLASS_SESSION_REOPENED", "ClassSession", session._id, { state: "CLOSED", closedAt: session.closedAt?.toISOString() }, { state: "OPEN" }, { automaticAbsencesRemoved: removed.deletedCount, reopenCount: reopened.reopenCount });
+  return { id: String(reopened._id), state: reopened.state, absencesRemoved: removed.deletedCount, alreadyOpen: false };
+}

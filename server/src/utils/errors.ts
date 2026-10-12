@@ -31,3 +31,7 @@ export const conflict = (message = "Ya existe un registro con esa información."
 
 export const unavailable = (message = "El servicio no está disponible temporalmente.") =>
   new AppError(503, "SERVICE_UNAVAILABLE", message);
+
+// Límite de capacidad de la cuenta: el mensaje siempre indica a quién escribir para ampliarla.
+export const limitReached = (message: string, contactEmail: string) =>
+  new AppError(409, "PLAN_LIMIT_REACHED", `${message} Para ampliar la capacidad, escribe al administrador: ${contactEmail}.`, { contactEmail });

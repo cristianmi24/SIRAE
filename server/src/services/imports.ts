@@ -4,7 +4,8 @@ import ExcelJS from "exceljs";
 import { fileTypeFromBuffer } from "file-type";
 import { Types } from "mongoose";
 import { ImportJob, Subject } from "../models/learning.js";
-import { CourseGroup, Enrollment, Institution, Student } from "../models/index.js";
+import { CourseGroup, Enrollment, Student } from "../models/index.js";
+import { assertCanCreateCourses, countActiveCourses, rollbackCourseIfOverLimit } from "./account-limits.js";
 import type { AuthContext } from "./auth-context.js";
 import { actorId, audit, objectId, tenantId } from "./learning-common.js";
 import { normalizeForLookup } from "../utils/text.js";
@@ -153,10 +154,7 @@ async function validateRows(context: AuthContext, kind: "students", rows: Record
   const uniqueCandidates = candidates.filter((x) => !duplicateKeys.has(String(x.normalized)));
   const usedNewKeys = new Set(uniqueCandidates.map((x) => x.newCourseKey).filter(Boolean));
   const coursesToCreate = [...newCourses.values()].filter((course) => usedNewKeys.has(course.key));
-  if (coursesToCreate.length) {
-    const institution = await Institution.findById(context.institution.id).select("type").lean();
-    if (institution?.type === "PERSONAL" && groups.length + coursesToCreate.length > 6) throw new AppError(409, "COURSE_LIMIT", `Tu aula personal permite máximo 6 cursos. Ya tienes ${groups.length} y el archivo crearía ${coursesToCreate.length} nuevos.`);
-  }
+  if (coursesToCreate.length) await assertCanCreateCourses(context, coursesToCreate.length, await countActiveCourses(tenantId(context)));
   const creatableKeys = new Set([...groupMap.keys(), ...coursesToCreate.map((course) => course.key)]);
   const subjectPlan = [...subjectLinks.entries()].map(([key, link]) => ({ key, name: link.name, existingId: subjectMap.get(key)?._id, courseKeys: [...link.courseKeys].filter((courseKeyValue) => creatableKeys.has(courseKeyValue)) })).filter((plan) => plan.courseKeys.length);
   const summary = { found: rows.length, valid: uniqueCandidates.length, duplicates: duplicateCount, errors: new Set(errors.map((item) => item.row)).size };
@@ -184,7 +182,9 @@ async function createMissingCourses(context: AuthContext, courses: NewCourse[]) 
     const [gradeNormalized, groupNormalized] = course.key.split("|") as [string, string];
     const existing = await CourseGroup.findOne({ institutionId: tenantId(context), gradeNormalized, groupNormalized, active: true }).select("_id").lean();
     if (existing) { created.set(course.key, existing._id); continue; }
+    await assertCanCreateCourses(context);
     const row = await CourseGroup.create({ institutionId: tenantId(context), grade: course.grade, gradeNormalized, group: course.group, groupNormalized, academicYear, active: true });
+    await rollbackCourseIfOverLimit(context, row._id);
     created.set(course.key, row._id);
     await audit(context, "COURSE_GROUP_CREATED_FROM_IMPORT", "CourseGroup", row._id, undefined, { grade: row.grade, group: row.group, academicYear });
   }

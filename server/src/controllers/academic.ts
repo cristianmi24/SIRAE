@@ -117,7 +117,9 @@ function dataUrlBuffer(dataUrl: string): Buffer {
 export async function exportStudentQrsController(request: Request, response: Response, next: NextFunction): Promise<void> {
     try {
       const context = requireAuthContext(request);
-      const students = await Student.find({ institutionId: context.institution.id, active: true }).sort({ lastName: 1, firstName: 1 }).limit(10_000);
+      // Un docente solo exporta (y renueva) los QR de los cursos que tiene asignados.
+      const scope = context.membership.role === "ADMIN" ? {} : { courseGroupId: { $in: context.membership.courseGroupIds } };
+      const students = await Student.find({ institutionId: context.institution.id, active: true, ...scope }).sort({ lastName: 1, firstName: 1 }).limit(10_000);
       if (!students.length) {
         response.status(404).json({ error: { code: "NO_STUDENTS", message: "No hay estudiantes activos para exportar." } });
         return;
