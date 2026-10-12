@@ -13,8 +13,9 @@ async function attachFrontend() {
 
   if (environment.NODE_ENV === "production") {
     const clientDirectory = path.join(projectDirectory, "dist", "client");
-    app.use(express.static(clientDirectory));
+    app.use(express.static(clientDirectory, { setHeaders: (response, file) => { if (/[\/](sw\.js|index\.html)$/.test(file)) response.setHeader("Cache-Control", "no-cache"); else if (/[\/]assets[\/]/.test(file)) response.setHeader("Cache-Control", "public, max-age=31536000, immutable"); } }));
     app.get(/^(?!\/api).*/, (_request, response) => {
+      response.setHeader("Cache-Control", "no-cache");
       response.sendFile(path.join(clientDirectory, "index.html"));
     });
   } else {

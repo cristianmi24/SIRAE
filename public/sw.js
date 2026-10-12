@@ -1,8 +1,8 @@
 // v2: solo se guardan en caché los archivos con hash de producción (/assets/).
 // La versión anterior también guardaba módulos de desarrollo (/src/…, /node_modules/.vite/…),
 // lo que mezclaba versiones de React tras una recarga. Al activarse, se borran esas cachés.
-const SHELL_CACHE = "aulanexo-shell-v3";
-const ASSET_CACHE = "aulanexo-assets-v3";
+const SHELL_CACHE = "aulanexo-shell-v4";
+const ASSET_CACHE = "aulanexo-assets-v4";
 const SHELL_URLS = ["/manifest.webmanifest", "/sirae-mark.webp", "/sirae-logo.webp", "/edutlan-logo.webp"];
 const isDevHost = ["localhost", "127.0.0.1", "[::1]"].includes(self.location.hostname);
 
@@ -19,7 +19,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
   if (request.mode === "navigate") {
     if (isDevHost) return;
-    event.respondWith(fetch(request).then((response) => {
+    event.respondWith(fetch(request, { cache: "no-cache" }).then((response) => {
       // Se clona antes de devolver la respuesta: después su contenido ya fue leído.
       if (response.ok && response.type === "basic") { const copy = response.clone(); void caches.open(SHELL_CACHE).then((cache) => cache.put("/", copy)); }
       return response;
