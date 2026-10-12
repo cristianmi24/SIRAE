@@ -44,7 +44,7 @@ export function LegalPage() {
             <li>Entrega a cada estudiante su código de forma personal. No publiques la lista completa de códigos.</li>
             <li>No uses SIRAE para fines distintos a la gestión académica ni intentes acceder a información de otras aulas.</li>
             <li>Los análisis y alertas describen los datos registrados; no reemplazan el criterio del docente. Que asistencia y rendimiento coincidan no demuestra que uno cause el otro.</li>
-            <li>Al registrarte eliges el tipo de cuenta: <strong>Docente</strong> (cuenta individual, hasta {ACCOUNT_LIMITS.PERSONAL.courses} cursos) o <strong>Institución</strong> (hasta {ACCOUNT_LIMITS.INSTITUTION.teachers} docentes, con un máximo de {ACCOUNT_LIMITS.INSTITUTION.coursesPerTeacher} cursos cada uno). Para ampliar la capacidad escribe a <a href={`mailto:${ADMIN_CONTACT_EMAIL}`}>{ADMIN_CONTACT_EMAIL}</a>.</li>
+            <li>Al registrarte eliges el tipo de cuenta: <strong>Docente</strong> (cuenta individual, por defecto hasta {ACCOUNT_LIMITS.PERSONAL.courses} cursos) o <strong>Institución</strong> (por defecto hasta {ACCOUNT_LIMITS.INSTITUTION.teachers} docentes, con un máximo de {ACCOUNT_LIMITS.INSTITUTION.coursesPerTeacher} cursos cada uno). El administrador de la plataforma puede ampliar estos límites; para solicitarlo escribe a <a href={`mailto:${ADMIN_CONTACT_EMAIL}`}>{ADMIN_CONTACT_EMAIL}</a>.</li>
             <li>Podemos actualizar estos términos. Si el cambio es importante, lo avisaremos en el sitio.</li>
           </ul>
         </section>
@@ -68,7 +68,7 @@ export function LegalPage() {
           <h2>3. Docentes e instituciones: quién ve qué</h2>
           <ul>
             <li><strong>Cuenta de docente:</strong> solo el docente ve y modifica sus cursos, estudiantes, asistencia y notas.</li>
-            <li><strong>Cuenta de institución:</strong> quien la administra ve a los docentes que invitó y que aceptaron la invitación, sus cursos y la asistencia de sus estudiantes. Esa información se actualiza sola mientras la página está abierta.</li>
+            <li><strong>Cuenta de institución:</strong> quien la administra puede invitar docentes o crearles una cuenta con correo y clave, y ve a sus docentes, sus cursos y la asistencia de sus estudiantes. Esa información se actualiza sola mientras la página está abierta.</li>
             <li>Un docente de una institución solo ve los cursos que la institución le asignó. Una institución nunca ve docentes ni datos de otra institución.</li>
             <li>Si perteneces a tu propia aula y a una institución, puedes cambiar entre ellas; los datos de cada una se mantienen separados.</li>
           </ul>
@@ -129,7 +129,7 @@ export function LegalPage() {
               <tr><td data-label="Qué se guarda">Identificador del dispositivo</td><td data-label="Para qué">Un número aleatorio que genera SIRAE para el control del registro por código. No identifica a la persona.</td><td data-label="Duración">24 horas</td></tr>
               <tr><td data-label="Qué se guarda">Preferencias locales</td><td data-label="Para qué">El tema claro u oscuro y los borradores de observaciones. Se guardan solo en tu navegador.</td><td data-label="Duración">Hasta que las borres</td></tr>
               <tr><td data-label="Qué se guarda">Escaneos sin conexión</td><td data-label="Para qué">Si el docente escanea QR sin internet, el registro se guarda en el dispositivo y se envía al volver la conexión.</td><td data-label="Duración">Hasta que se envían</td></tr>
-              <tr><td data-label="Qué se guarda">Cookies de analítica (solo si Google Analytics está habilitado)</td><td data-label="Para qué">Medir las visitas, distinguir visitantes y conocer cómo se usa el sitio.</td><td data-label="Duración">Según la configuración de Google Analytics</td></tr>
+              <tr><td data-label="Qué se guarda">Cookies de analítica de Google Analytics (_ga y _ga_*)</td><td data-label="Para qué">Medir las visitas, distinguir visitantes y conocer cómo se usa el sitio. Las direcciones de las páginas se envían sin códigos de estudiantes, enlaces de asistencia ni identificadores.</td><td data-label="Duración">Hasta 2 años, según la configuración de Google</td></tr>
             </tbody>
           </table>
           <p>Si se encuentra habilitado Google Analytics, también se utilizan cookies propias de analítica para medir las visitas, distinguir visitantes y conocer cómo se utiliza el sitio web. Estos datos se emplean para elaborar estadísticas de uso y mejorar el servicio.</p>
