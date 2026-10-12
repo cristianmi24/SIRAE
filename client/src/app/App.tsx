@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 import { Building2, CheckCircle2, Eye, EyeOff, GraduationCap, LockKeyhole, Moon, ShieldCheck, Sparkles, Sun, UserRound, UsersRound } from "lucide-react";
 import { ACCOUNT_LIMITS } from "../../../shared/limits";
+import { usePageViews } from "../lib/analytics";
 import { StudentLookup } from "../features/auth/StudentLookup";
 import { StudentSelfReport } from "../features/auth/StudentSelfReport";
 import type { StudentSelfReportDto } from "../services/api";
@@ -189,9 +190,11 @@ function AuthenticatedApplication() {
   );
 }
 
+function PageViewTracker() { usePageViews(); return null; }
+
 export function App() {
   // La página de registro por código es pública: el estudiante no inicia sesión.
-  return <BrowserRouter><Routes>
+  return <BrowserRouter><PageViewTracker /><Routes>
     <Route path="/legal" element={<Suspense fallback={<LoadingState label="Cargando…" />}><LegalPage /></Suspense>} />
     <Route path="/asistencia/:token" element={<Suspense fallback={<LoadingState label="Cargando…" />}><PublicAttendancePage /></Suspense>} />
     <Route path="*" element={<AuthenticatedApplication />} />
