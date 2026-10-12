@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ErrorPanel, LoadingState } from "../components/Feedback";
+import { Search } from "lucide-react";
 import { ACCOUNT_LIMITS } from "../../../shared/limits";
 import { api, type PlatformLimitsInput, type PlatformOverviewDto } from "../services/api";
 
@@ -16,6 +17,8 @@ export function PlatformInstitutionsPage() {
   const [adminEmail, setAdminEmail] = useState("");
   const [courses, setCourses] = useState(""); const [teachers, setTeachers] = useState(""); const [perTeacher, setPerTeacher] = useState("");
   const [notice, setNotice] = useState("");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"ALL" | "INSTITUTION" | "PERSONAL">("ALL");
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["platformOverview"] });
 
   const create = useMutation({
@@ -29,7 +32,10 @@ export function PlatformInstitutionsPage() {
 
   if (overview.isLoading) return <LoadingState label="Cargando instituciones…" />;
   if (overview.error || !overview.data) return <div className="page"><ErrorPanel title="No se pudieron cargar las instituciones" detail={errorText(overview.error, "")} /></div>;
-  const rows = overview.data.institutions;
+  const all = overview.data.institutions;
+  const query = search.trim().toLowerCase();
+  const rows = all.filter((row) => (filter === "ALL" || row.type === filter) && (!query || `${row.name} ${row.owner ?? ""} ${row.ownerEmail ?? ""}`.toLowerCase().includes(query)));
+  const count = (type: "INSTITUTION" | "PERSONAL") => all.filter((row) => row.type === type).length;
 
   return <section className="page">
     <div className="page-heading"><div><h1>Instituciones</h1><p className="page-subtitle">Crea instituciones y reemplaza sus límites de capacidad. Lo que dejes vacío usa el valor por defecto.</p></div></div>
@@ -49,8 +55,14 @@ export function PlatformInstitutionsPage() {
       {notice && <p className="helper-text" role="status">{notice}</p>}
     </article>
     <article className="content-card">
-      <h2>Instituciones y aulas ({rows.length})</h2>
-      {rows.length ? <div className="stack">{rows.map((row) => <InstitutionRow key={row.id} row={row} onSaved={refresh} />)}</div> : <p className="empty-state">Todavía no hay instituciones.</p>}
+      <div className="card-title-row">
+        <div><h2>Registrados ({rows.length})</h2><p className="helper-text">Instituciones y docentes que se registraron solos o que creaste tú. A todos se les pueden subir los límites.</p></div>
+        <label className="search-field compact-search"><Search size={16} aria-hidden="true" /><input aria-label="Buscar" placeholder="Nombre o correo" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+      </div>
+      <div className="segmented" role="tablist" style={{ marginBottom: ".6rem" }}>
+        {([["ALL", `Todos (${all.length})`], ["INSTITUTION", `Instituciones (${count("INSTITUTION")})`], ["PERSONAL", `Docentes (${count("PERSONAL")})`]] as const).map(([value, text]) => <button key={value} role="tab" aria-selected={filter === value} className={filter === value ? "is-active" : ""} onClick={() => setFilter(value)}>{text}</button>)}
+      </div>
+      {rows.length ? <div className="stack">{rows.map((row) => <InstitutionRow key={row.id} row={row} onSaved={refresh} />)}</div> : <p className="empty-state">{all.length ? "Nadie coincide con la búsqueda." : "Todavía no hay instituciones ni docentes."}</p>}
     </article>
   </section>;
 }
@@ -66,16 +78,18 @@ function InstitutionRow({ row, onSaved }: { row: Row; onSaved: () => unknown }) 
     onSuccess: () => { setMessage("Guardado."); void onSaved(); },
     onError: (error) => setMessage(errorText(error, "No se pudo guardar.")),
   });
+  const bump = (setter: (value: string) => void, current: string, amount: number) => setter(String(Math.max(1, (Number(current) || 0) + amount)));
+  const quick = (setter: (value: string) => void, current: string) => <span style={{ display: "flex", gap: ".25rem", marginTop: ".25rem" }}>{[1, 5, 10].map((amount) => <button key={amount} type="button" className="button button-secondary" style={{ padding: ".1rem .5rem", fontSize: ".8rem" }} onClick={() => bump(setter, current, amount)}>+{amount}</button>)}</span>;
   const limits = (): PlatformLimitsInput => ({ courses: Number(courses), ...(isInstitution ? { teachers: Number(teachers), coursesPerTeacher: Number(perTeacher) } : {}) });
   const reset = () => save.mutate({ limits: { courses: null, ...(isInstitution ? { teachers: null, coursesPerTeacher: null } : {}) } });
   return <div className="inline-row" style={{ display: "grid", gap: ".6rem", padding: ".8rem 0", borderTop: "1px solid var(--line)" }}>
     <div><strong>{row.name}</strong> <span className={`course-tag ${isInstitution ? "tag-institution" : ""}`}>{isInstitution ? "Institución" : "Aula personal"}</span>{!row.active && <span className="course-tag"> Desactivada</span>}{row.customLimits && <span className="course-tag"> Límites personalizados</span>}
-      <small className="cell-sub">{row.owner ? `${row.owner} · ` : ""}{row.members} docentes · {row.courses}/{row.limits.courses} cursos · {row.students} estudiantes</small></div>
+      <small className="cell-sub">{row.owner ? `${row.owner}${row.ownerEmail ? ` (${row.ownerEmail})` : ""} · ` : ""}{row.createdAt ? `Registro ${new Date(row.createdAt).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })} · ` : ""}{row.members} {isInstitution ? "docentes" : "usuarios"} · {row.courses}/{row.limits.courses} cursos · {row.students} estudiantes</small></div>
     <div className="form-grid compact-form" style={{ gridTemplateColumns: isInstitution ? "repeat(3, minmax(0, 1fr))" : "minmax(0, 1fr)" }}>
-      <label className="form-field"><span>Máx. cursos</span><input type="number" min={1} value={courses} onChange={(event) => setCourses(event.target.value)} /></label>
+      <label className="form-field"><span>Máx. cursos</span><input type="number" min={1} value={courses} onChange={(event) => setCourses(event.target.value)} />{quick(setCourses, courses)}</label>
       {isInstitution && <>
-        <label className="form-field"><span>Máx. docentes</span><input type="number" min={1} value={teachers} onChange={(event) => setTeachers(event.target.value)} /></label>
-        <label className="form-field"><span>Cursos por docente</span><input type="number" min={1} value={perTeacher} onChange={(event) => setPerTeacher(event.target.value)} /></label>
+        <label className="form-field"><span>Máx. docentes</span><input type="number" min={1} value={teachers} onChange={(event) => setTeachers(event.target.value)} />{quick(setTeachers, teachers)}</label>
+        <label className="form-field"><span>Cursos por docente</span><input type="number" min={1} value={perTeacher} onChange={(event) => setPerTeacher(event.target.value)} />{quick(setPerTeacher, perTeacher)}</label>
       </>}
     </div>
     <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "center" }}>

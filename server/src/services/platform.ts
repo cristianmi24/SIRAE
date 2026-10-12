@@ -71,7 +71,7 @@ export async function platformOverview(_context: AuthContext) {
   });
   const institutionRows = institutions.map((row) => {
     const id = String(row._id);
-    return { id, name: row.name, type: row.type, active: row.active, owner: row.ownerUserId ? userById.get(String(row.ownerUserId))?.displayName : undefined, createdAt: row.createdAt?.toISOString(), limits: effectiveLimits(row.type, row.limits), customLimits: Boolean(row.limits && (row.limits.courses || row.limits.teachers || row.limits.coursesPerTeacher)), members: membersByInstitution.get(id) ?? 0, students: activeStudents.get(id) ?? 0, totalStudents: students.get(id) ?? 0, courses: courses.get(id) ?? 0, sessions: sessions.get(id) ?? 0, lastActivityAt: activity.get(id)?.toISOString() };
+    return { id, name: row.name, type: row.type, active: row.active, owner: row.ownerUserId ? userById.get(String(row.ownerUserId))?.displayName : undefined, ownerEmail: row.ownerUserId ? userById.get(String(row.ownerUserId))?.email : undefined, createdAt: row.createdAt?.toISOString(), limits: effectiveLimits(row.type, row.limits), customLimits: Boolean(row.limits && (row.limits.courses || row.limits.teachers || row.limits.coursesPerTeacher)), members: membersByInstitution.get(id) ?? 0, students: activeStudents.get(id) ?? 0, totalStudents: students.get(id) ?? 0, courses: courses.get(id) ?? 0, sessions: sessions.get(id) ?? 0, lastActivityAt: activity.get(id)?.toISOString() };
   });
   return {
     totals: {

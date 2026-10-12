@@ -45,7 +45,7 @@ export interface PlatformLimitsInput { courses?: number | null; teachers?: numbe
 export interface PlatformOverviewDto {
   totals: { institutions: number; personalClassrooms: number; teachers: number; activeTeachers7d: number; activeTeachers30d: number; students: number; courses: number; sessions: number; grades: number; observations: number };
   teachers: { id: string; name: string; email: string; active: boolean; createdAt?: string; lastSeenAt?: string; lastLoginAt?: string; institutionName?: string; institutionType?: "PERSONAL" | "INSTITUTION"; role?: string; students: number; courses: number; sessions: number }[];
-  institutions: { id: string; name: string; type: "PERSONAL" | "INSTITUTION"; active: boolean; owner?: string; createdAt?: string; limits: { courses: number; teachers?: number; coursesPerTeacher?: number }; customLimits: boolean; members: number; students: number; totalStudents: number; courses: number; sessions: number; lastActivityAt?: string }[];
+  institutions: { id: string; name: string; type: "PERSONAL" | "INSTITUTION"; active: boolean; owner?: string; ownerEmail?: string; createdAt?: string; limits: { courses: number; teachers?: number; coursesPerTeacher?: number }; customLimits: boolean; members: number; students: number; totalStudents: number; courses: number; sessions: number; lastActivityAt?: string }[];
 }
 export interface StudentReportDto {
   institutionName: string; generatedAt: string; studentName: string; documentNumber: string; groupLabel: string; periodName: string; subjectName: string; fromKey?: string; toKey?: string; timezone: string; sessionCount: number;
