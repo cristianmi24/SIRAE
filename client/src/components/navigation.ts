@@ -7,6 +7,7 @@ export type NavSection = { title: string; items: NavItem[] };
 // luego materias y horarios, y después el trabajo diario y los resultados.
 export const home: NavItem = { to: "/", label: "Inicio", icon: Home, tone: "sun", shortcut: "1" };
 export const monitoring: NavItem = { to: "/", label: "Monitoreo", icon: Activity, tone: "teal", shortcut: "1" };
+export const platformInstitutions: NavItem = { to: "/institutions", label: "Instituciones", icon: Building2, tone: "violet", shortcut: "2" };
 export const sections: NavSection[] = [
   { title: "Preparar el aula", items: [
     { to: "/students", label: "Estudiantes", icon: Users, tone: "blue", step: 1, shortcut: "2" },
@@ -36,7 +37,7 @@ export function adminItemsFor(user: { role: string | null; accountType?: string 
 }
 
 export function navItemsFor(user: { role: string | null; platformAdmin?: boolean; accountType?: string }): NavItem[] {
-  if (user.platformAdmin) return [monitoring];
+  if (user.platformAdmin) return [monitoring, platformInstitutions];
   return [home, ...sections.flatMap((section) => section.items), ...adminItemsFor(user)];
 }
 

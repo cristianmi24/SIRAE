@@ -1,7 +1,7 @@
 import type { Request } from "express";
 import type { Types } from "mongoose";
 import type { MembershipRole } from "../../../shared/types.js";
-import type { AccountType } from "../../../shared/limits.js";
+import type { AccountType, LimitOverrides } from "../../../shared/limits.js";
 import { Institution, Membership, MembershipInvitation, User } from "../models/index.js";
 import { forbidden, unavailable } from "../utils/errors.js";
 import { getSessionIdentity, type SessionIdentity } from "./local-auth.js";
@@ -11,7 +11,7 @@ export interface AuthContext {
   identity: SessionIdentity;
   user: { id: string; name: string; email: string };
   membership: { id: string; role: MembershipRole; courseGroupIds: string[] };
-  institution: { id: string; name: string; timezone: string; type?: AccountType };
+  institution: { id: string; name: string; timezone: string; type?: AccountType; limits?: LimitOverrides };
 }
 
 // Una persona puede pertenecer a más de un espacio (su aula y una institución que la invitó).
@@ -46,7 +46,7 @@ export async function resolveAuthenticatedContext(request: Request): Promise<Aut
     identity,
     user: { id: user._id.toString(), name: user.displayName, email: user.email },
     membership: { id: membership._id.toString(), role: membership.role, courseGroupIds: membership.courseGroupIds.map((id) => id.toString()) },
-    institution: { id: institution._id.toString(), name: institution.name, timezone: institution.timezone, type: institution.type },
+    institution: { id: institution._id.toString(), name: institution.name, timezone: institution.timezone, type: institution.type, limits: institution.limits ? { courses: institution.limits.courses ?? undefined, teachers: institution.limits.teachers ?? undefined, coursesPerTeacher: institution.limits.coursesPerTeacher ?? undefined } : undefined },
   };
 }
 

@@ -32,6 +32,7 @@ const StudentCodesPage = lazyPage(() => import("../pages/StudentCodesPage").then
 const LegalPage = lazyPage(() => import("../pages/LegalPage").then((page) => ({ default: page.LegalPage })));
 const MonitoringPage = lazyPage(() => import("../pages/MonitoringPage").then((page) => ({ default: page.MonitoringPage })));
 const NotFoundPage = lazyPage(() => import("../pages/NotFoundPage").then((page) => ({ default: page.NotFoundPage })));
+const PlatformInstitutionsPage = lazyPage(() => import("../pages/PlatformInstitutionsPage").then((page) => ({ default: page.PlatformInstitutionsPage })));
 const InstitutionPage = lazyPage(() => import("../pages/InstitutionPage").then((page) => ({ default: page.InstitutionPage })));
 const AuditPage = lazyPage(() => import("../pages/AuditPage").then((page) => ({ default: page.AuditPage })));
 
@@ -155,7 +156,7 @@ function AuthenticatedApplication() {
   if (!auth.data?.authenticated || !auth.data.user) return <SignInScreen />;
 
   if (auth.data.user.platformAdmin) {
-    return <AppShell user={auth.data.user}><Suspense fallback={<LoadingState label="Abriendo módulo…" />}><Routes><Route path="/" element={<MonitoringPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></Suspense></AppShell>;
+    return <AppShell user={auth.data.user}><Suspense fallback={<LoadingState label="Abriendo módulo…" />}><Routes><Route path="/" element={<MonitoringPage />} /><Route path="/institutions" element={<PlatformInstitutionsPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></Suspense></AppShell>;
   }
   return (
     <AppShell user={auth.data.user}>

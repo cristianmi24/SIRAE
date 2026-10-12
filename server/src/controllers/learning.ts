@@ -138,14 +138,14 @@ export const invitationCreate = run(async (req, res, auth) => {
     const prior = await Membership.findOne({ userId: existing._id, institutionId: tenantId(auth) });
     if (prior) throw new AppError(409, "MEMBERSHIP_EXISTS", "La cuenta ya tiene una membresía en esta institución.");
     const membership = await Membership.create({ userId: existing._id, institutionId: tenantId(auth), role: body.role, active: true, courseGroupIds: [...new Set(body.courseGroupIds)].map((id) => objectId(id)) });
-    if (body.role === "DOCENTE" && !await teacherSlotsWithinLimit(auth)) { await Membership.deleteOne({ _id: membership._id }); throw teacherLimitError(); }
+    if (body.role === "DOCENTE" && !await teacherSlotsWithinLimit(auth)) { await Membership.deleteOne({ _id: membership._id }); throw teacherLimitError(auth); }
     await audit(auth, "MEMBERSHIP_CREATED", "Membership", membership._id, undefined, { role: body.role, invitedEmailHash: createHash("sha256").update(email).digest("hex") });
     res.status(201).json({ status: "MEMBER_ADDED", message: "La cuenta ya existía; la membresía quedó activa para su próximo acceso." }); return;
   }
   const duplicate = await MembershipInvitation.findOne({ institutionId: tenantId(auth), email, acceptedAt: { $exists: false }, expiresAt: { $gt: new Date() } });
   if (duplicate) throw new AppError(409, "INVITATION_EXISTS", "Ya existe una invitación vigente para ese correo.");
   const invitation = await MembershipInvitation.create({ institutionId: tenantId(auth), email, role: body.role, courseGroupIds: [...new Set(body.courseGroupIds)].map((id) => objectId(id)), invitedBy: actorId(auth), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) });
-    if (body.role === "DOCENTE" && !await teacherSlotsWithinLimit(auth)) { await MembershipInvitation.deleteOne({ _id: invitation._id }); throw teacherLimitError(); }
+    if (body.role === "DOCENTE" && !await teacherSlotsWithinLimit(auth)) { await MembershipInvitation.deleteOne({ _id: invitation._id }); throw teacherLimitError(auth); }
   await audit(auth, "MEMBERSHIP_INVITED", "MembershipInvitation", invitation._id, undefined, { role: body.role, invitedEmailHash: createHash("sha256").update(email).digest("hex"), expiresAt: invitation.expiresAt.toISOString() });
   res.status(201).json({ status: "INVITED", message: `Invitación creada. La persona debe registrarse o iniciar sesión con ${email}; la invitación vence en 30 días.` });
 });

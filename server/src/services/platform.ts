@@ -1,7 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
-import { AuditLog, CourseGroup, Institution, Membership, Student, User } from "../models/index.js";
+import { z } from "zod";
+import { Types } from "mongoose";
+import { effectiveLimits } from "../../../shared/limits.js";
+import { AuditLog, CourseGroup, Institution, Membership, MembershipInvitation, Student, User } from "../models/index.js";
 import { ClassSession, Grade, Observation } from "../models/learning.js";
-import { forbidden } from "../utils/errors.js";
+import { conflict, forbidden, notFound } from "../utils/errors.js";
 import type { AuthContext } from "./auth-context.js";
 
 // La cuenta configurada en AULANEXO_ADMIN_EMAIL es un perfil de monitoreo de toda la plataforma.
@@ -68,7 +71,7 @@ export async function platformOverview(_context: AuthContext) {
   });
   const institutionRows = institutions.map((row) => {
     const id = String(row._id);
-    return { id, name: row.name, type: row.type, active: row.active, owner: row.ownerUserId ? userById.get(String(row.ownerUserId))?.displayName : undefined, createdAt: row.createdAt?.toISOString(), members: membersByInstitution.get(id) ?? 0, students: activeStudents.get(id) ?? 0, totalStudents: students.get(id) ?? 0, courses: courses.get(id) ?? 0, sessions: sessions.get(id) ?? 0, lastActivityAt: activity.get(id)?.toISOString() };
+    return { id, name: row.name, type: row.type, active: row.active, owner: row.ownerUserId ? userById.get(String(row.ownerUserId))?.displayName : undefined, createdAt: row.createdAt?.toISOString(), limits: effectiveLimits(row.type, row.limits), customLimits: Boolean(row.limits && (row.limits.courses || row.limits.teachers || row.limits.coursesPerTeacher)), members: membersByInstitution.get(id) ?? 0, students: activeStudents.get(id) ?? 0, totalStudents: students.get(id) ?? 0, courses: courses.get(id) ?? 0, sessions: sessions.get(id) ?? 0, lastActivityAt: activity.get(id)?.toISOString() };
   });
   return {
     totals: {
@@ -86,4 +89,61 @@ export async function platformOverview(_context: AuthContext) {
     teachers: teacherRows,
     institutions: institutionRows,
   };
+}
+
+const limitField = (max: number) => z.number().int().min(1).max(max).nullable().optional();
+const limitsInput = z.object({ courses: limitField(100000), teachers: limitField(10000), coursesPerTeacher: limitField(1000) }).strict();
+export const platformInstitutionInput = z.object({
+  name: z.string().trim().min(2).max(120),
+  type: z.enum(["INSTITUTION", "PERSONAL"]).default("INSTITUTION"),
+  adminEmail: z.string().trim().toLowerCase().email().max(254).optional().or(z.literal("")),
+  limits: limitsInput.optional(),
+}).strict();
+export const platformInstitutionPatch = z.object({
+  name: z.string().trim().min(2).max(120).optional(),
+  active: z.boolean().optional(),
+  limits: limitsInput.optional(),
+}).strict();
+
+// null o ausente quita el reemplazo y vuelve al límite por defecto.
+function limitsUpdate(limits: z.infer<typeof limitsInput>) {
+  const set: Record<string, number> = {}; const unset: Record<string, 1> = {};
+  for (const key of ["courses", "teachers", "coursesPerTeacher"] as const) {
+    const value = limits[key];
+    if (typeof value === "number") set[`limits.${key}`] = value; else if (value === null) unset[`limits.${key}`] = 1;
+  }
+  return { set, unset };
+}
+
+export async function createPlatformInstitution(context: AuthContext, input: z.infer<typeof platformInstitutionInput>) {
+  const limits = limitsUpdate(input.limits ?? {}).set;
+  const institution = await Institution.create({
+    name: input.name, type: input.type, timezone: "America/Bogota", active: true,
+    ...(Object.keys(limits).length ? { limits: Object.fromEntries(Object.entries(limits).map(([key, value]) => [key.replace("limits.", ""), value])) } : {}),
+  });
+  let adminStatus: "NONE" | "ASSIGNED" | "INVITED" = "NONE";
+  if (input.adminEmail) {
+    const existing = await User.findOne({ email: input.adminEmail, active: true });
+    if (existing) {
+      await Membership.findOneAndUpdate({ userId: existing._id, institutionId: institution._id }, { $setOnInsert: { role: "ADMIN", active: true, courseGroupIds: [] } }, { upsert: true, setDefaultsOnInsert: true });
+      if (!institution.ownerUserId) await Institution.updateOne({ _id: institution._id }, { $set: { ownerUserId: existing._id } });
+      adminStatus = "ASSIGNED";
+    } else {
+      await MembershipInvitation.create({ institutionId: institution._id, email: input.adminEmail, role: "ADMIN", courseGroupIds: [], invitedBy: new Types.ObjectId(context.user.id), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) });
+      adminStatus = "INVITED";
+    }
+  }
+  return { id: String(institution._id), name: institution.name, adminStatus };
+}
+
+export async function updatePlatformInstitution(id: string, input: z.infer<typeof platformInstitutionPatch>) {
+  if (!Types.ObjectId.isValid(id)) throw notFound("No se encontró la institución.");
+  const institution = await Institution.findById(id);
+  if (!institution) throw notFound("No se encontró la institución.");
+  const { set: limitSet, unset } = limitsUpdate(input.limits ?? {}); const set: Record<string, unknown> = { ...limitSet };
+  if (input.name !== undefined) set.name = input.name;
+  if (input.active !== undefined) set.active = input.active;
+  if (!Object.keys(set).length && !Object.keys(unset).length) throw conflict("No hay cambios para guardar.");
+  await Institution.updateOne({ _id: institution._id }, { ...(Object.keys(set).length ? { $set: set } : {}), ...(Object.keys(unset).length ? { $unset: unset } : {}) });
+  return { id };
 }
