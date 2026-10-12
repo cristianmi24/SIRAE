@@ -1018,3 +1018,27 @@ body.camera-open { overflow: hidden; }
 @media (min-width: 900px) {
   .camera-frame.is-expanded video { object-fit: contain; }
 }
+
+/* ───────── Portada en celular: solo el logo y un encabezado compacto ───────── */
+.access-card { scroll-margin-top: 1rem; }
+@media (max-width: 640px) {
+  .marketing-header { padding: .8rem 1rem; gap: .6rem; }
+  .marketing-header .brand-tagline, .marketing-footer .brand-tagline { display: none; }
+  .marketing-header .brand-on-light .brand-logo { width: 96px; }
+  .marketing-actions { gap: .4rem; }
+  .marketing-actions .topbar-button { width: 40px; height: 40px; }
+  .marketing-login { min-height: 40px; padding: .45rem .85rem; font-size: .9rem; }
+  .marketing-hero { gap: 1.5rem; padding: .5rem 1rem 2rem; }
+  .marketing-copy h1 { font-size: 1.95rem; line-height: 1.1; }
+  .marketing-lead { margin-top: .7rem; font-size: 1rem; line-height: 1.55; }
+  .marketing-proof { margin-top: 1rem; gap: .4rem; }
+  .marketing-proof span { padding: .3rem .65rem; font-size: .8rem; }
+  .access-card { padding: 1.2rem 1rem; border-radius: 16px; }
+  .access-card h2 { font-size: 1.35rem; }
+  .audience-tabs button { font-size: .86rem; white-space: nowrap; padding-inline: .4rem; }
+  .audience-tabs button svg { display: none; }
+  .marketing-footer { align-items: flex-start; }
+}
+@media (max-width: 360px) {
+  .marketing-login svg { display: none; }
+}

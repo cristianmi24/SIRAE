@@ -80,7 +80,7 @@ function SignInScreen() {
         </nav>
         <div className="marketing-actions">
           <button type="button" className="topbar-button" onClick={cycleTheme} aria-label="Cambiar tema claro u oscuro" title="Tema claro/oscuro (Alt+T)"><Sun size={18} className="icon-light" /><Moon size={18} className="icon-dark" /></button>
-          <button type="button" className="button button-secondary marketing-login" onClick={() => { setMode("login"); setAudience("teacher"); }}><LockKeyhole size={17} /> Iniciar sesión</button>
+          <button type="button" className="button button-secondary marketing-login" onClick={() => { setMode("login"); setAudience("teacher"); document.getElementById("acceso")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><LockKeyhole size={17} /> <span>Iniciar sesión</span></button>
         </div>
       </header>
 
@@ -90,7 +90,7 @@ function SignInScreen() {
           <p className="marketing-lead">Carga tu lista de estudiantes, toma asistencia con códigos QR y registra notas desde el celular o el computador.</p>
           <div className="marketing-proof"><span><CheckCircle2 size={17} /> Acceso protegido</span><span><CheckCircle2 size={17} /> QR sin datos personales</span></div>
         </div>
-        <aside className="access-card" aria-label="Acceso y registro">
+        <aside className="access-card" id="acceso" aria-label="Acceso y registro">
           <div className="segmented audience-tabs" role="tablist" aria-label="Tipo de acceso">
             <button role="tab" aria-selected={audience === "teacher"} className={audience === "teacher" ? "is-active" : ""} onClick={() => setAudience("teacher")}><LockKeyhole size={15} /> Docente o institución</button>
             <button role="tab" aria-selected={audience === "student"} className={audience === "student" ? "is-active" : ""} onClick={() => setAudience("student")}><GraduationCap size={15} /> Estudiante</button>
