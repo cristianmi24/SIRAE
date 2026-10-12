@@ -1,4 +1,4 @@
-import { Activity, BarChart3, MessageSquareWarning, Building2, BookOpenText, CalendarClock, FileBarChart2, Home, NotebookPen, QrCode, Settings2, ShieldCheck, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, MessageSquareWarning, Building2, BookOpenText, CalendarClock, FileBarChart2, Home, NotebookPen, QrCode, Settings2, BookMarked, ShieldCheck, TrendingUp, Users, type LucideIcon } from "lucide-react";
 
 export type NavItem = { to: string; label: string; icon: LucideIcon; tone: string; step?: number; shortcut?: string; short?: string };
 export type NavSection = { title: string; items: NavItem[] };
@@ -17,6 +17,7 @@ export const sections: NavSection[] = [
     { to: "/students", label: "Estudiantes", icon: Users, tone: "blue", step: 1, shortcut: "2" },
     { to: "/academic", label: "Notas", icon: NotebookPen, tone: "violet", step: 2, shortcut: "3" },
     { to: "/academic/schedules", label: "Horarios", icon: CalendarClock, tone: "amber", step: 3, shortcut: "4" },
+    { to: "/subjects", label: "Materias", icon: BookMarked, tone: "teal" },
   ] },
   { title: "Día a día", items: [
     { to: "/attendance", label: "Asistencia", icon: QrCode, tone: "green", step: 4, shortcut: "5" },

@@ -1,13 +1,15 @@
 import { CourseGroup } from "../models/index.js";
+import { Subject } from "../models/learning.js";
 import type { AuthContext } from "./auth-context.js";
 import { conflict } from "../utils/errors.js";
 import { normalizeForLookup } from "../utils/text.js";
 import { z } from "zod";
+import { GRADE_GROUP_HELP, parseGrade, parseGroup } from "../../../shared/courses.js";
 import { assertCanCreateCourses, rollbackCourseIfOverLimit } from "./account-limits.js";
 
 const courseGroupInputSchema = z.object({
-  grade: z.string().trim().min(1).max(64),
-  group: z.string().trim().min(1).max(32),
+  grade: z.string().trim().min(1).max(64).refine((value) => parseGrade(value) !== null, GRADE_GROUP_HELP).transform((value) => parseGrade(value)!),
+  group: z.string().trim().min(1).max(32).refine((value) => parseGroup(value) !== null, GRADE_GROUP_HELP).transform((value) => parseGroup(value)!),
   academicYear: z.coerce.number().int().min(2000).max(2200),
 });
 
@@ -39,6 +41,8 @@ export async function createCourseGroup(context: AuthContext, input: CourseGroup
       active: true,
     });
     await rollbackCourseIfOverLimit(context, group._id);
+    // Las materias dictadas en ese grado quedan disponibles también para el curso nuevo.
+    await Subject.updateMany({ institutionId: context.institution.id, active: true, grades: group.grade }, { $addToSet: { courseGroupIds: group._id } });
     return {
       id: group._id.toString(),
       grade: group.grade,

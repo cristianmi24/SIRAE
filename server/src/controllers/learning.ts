@@ -8,7 +8,7 @@ import ExcelJS from "exceljs";
 import type { AuthContext } from "../services/auth-context.js";
 import { requireAuthContext } from "../middleware/security.js";
 import { createSessionInput, subjectInput, periodInput, categoryInput, assessmentInput, gradeInput, scheduleInput, scheduleUpdateInput, scanInput, manualAttendanceInput, observationInput, assessmentUpdateInput, gradingModeInput, scheduleBreakInput, sessionAdjustInput, attendanceLinkInput } from "../validators/learning.js";
-import { createCategory, createAssessment, deleteAssessment, setGradingMode, updateAssessment, createPeriod, createSubject, listGradeSetup, listPeriods, listSubjects, listGrades, upsertGrade } from "../services/grades.js";
+import { createCategory, createAssessment, deleteAssessment, setGradingMode, updateAssessment, createPeriod, createSubject, deactivateSubject, listGradeSetup, listPeriods, listSubjects, listGrades, upsertGrade } from "../services/grades.js";
 import { closeClassSession, listSessionAttendance, reopenClassSession, scanQr, setManualAttendance } from "../services/attendance.js";
 import { adjustClassSession, createSchedule, createScheduleBreak, deleteScheduleBreak, listScheduleBreaks, deactivateSchedule, ensureClassSession, getSessionContext, listSchedules, listSessions, updateSchedule } from "../services/schedules.js";
 import { createObservation, listObservations } from "../services/observations.js";
@@ -30,7 +30,7 @@ export const subjectList = run(async (_req, res, auth) => { res.json({ items: aw
 export const importTemplateDownload = run(async (req, res, _auth) => {
   const kind = "students";
   const format = req.query.format === "xlsx" ? "xlsx" : "csv";
-  const headers = ["nombre", "apellido", "curso", "grupo", "asignatura"];
+  const headers = ["nombre", "apellido", "grado", "grupo", "asignatura"];
   const filename = `plantilla-${kind}.${format}`;
   if (format === "csv") {
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -49,7 +49,8 @@ export const importTemplateDownload = run(async (req, res, _auth) => {
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.send(Buffer.from(buffer));
 });
-export const subjectCreate = run(async (req, res, auth) => { admin(auth); res.status(201).json({ item: await createSubject(auth, subjectInput.parse(req.body)) }); });
+export const subjectCreate = run(async (req, res, auth) => { res.status(201).json({ item: await createSubject(auth, subjectInput.parse(req.body)) }); });
+export const subjectDeactivate = run(async (req, res, auth) => { admin(auth); const { id } = idSchema.parse(req.params); res.json({ item: await deactivateSubject(auth, id) }); });
 export const periodList = run(async (_req, res, auth) => { res.json({ items: await listPeriods(auth) }); });
 export const periodCreate = run(async (req, res, auth) => { admin(auth); res.status(201).json({ item: await createPeriod(auth, periodInput.parse(req.body)) }); });
 export const gradeSetup = run(async (req, res, auth) => { res.json(await listGradeSetup(auth, typeof req.query.periodId === "string" ? req.query.periodId : undefined, typeof req.query.subjectId === "string" ? req.query.subjectId : undefined)); });

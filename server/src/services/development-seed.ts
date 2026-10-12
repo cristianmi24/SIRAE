@@ -6,16 +6,16 @@ import { normalizeForLookup } from "../utils/text.js";
 import { forbidden } from "../utils/errors.js";
 
 const sampleStudents = [
-  ["Valentina", "Mora", "DEMO-1001", "8", "A"],
-  ["Mateo", "Rojas", "DEMO-1002", "8", "A"],
-  ["Sofía", "Castro", "DEMO-1003", "8", "A"],
-  ["Samuel", "Gómez", "DEMO-1004", "8", "A"],
-  ["Isabella", "Duarte", "DEMO-1005", "8", "A"],
-  ["Nicolás", "Luna", "DEMO-2001", "8", "B"],
-  ["Emma", "Herrera", "DEMO-2002", "8", "B"],
-  ["Thiago", "Vargas", "DEMO-2003", "8", "B"],
-  ["Martina", "Santos", "DEMO-2004", "8", "B"],
-  ["Gabriel", "Pineda", "DEMO-2005", "8", "B"],
+  ["Valentina", "Mora", "DEMO-1001", "8", "1"],
+  ["Mateo", "Rojas", "DEMO-1002", "8", "1"],
+  ["Sofía", "Castro", "DEMO-1003", "8", "1"],
+  ["Samuel", "Gómez", "DEMO-1004", "8", "1"],
+  ["Isabella", "Duarte", "DEMO-1005", "8", "1"],
+  ["Nicolás", "Luna", "DEMO-2001", "8", "2"],
+  ["Emma", "Herrera", "DEMO-2002", "8", "2"],
+  ["Thiago", "Vargas", "DEMO-2003", "8", "2"],
+  ["Martina", "Santos", "DEMO-2004", "8", "2"],
+  ["Gabriel", "Pineda", "DEMO-2005", "8", "2"],
 ] as const;
 
 export async function seedDevelopmentData(context: AuthContext) {

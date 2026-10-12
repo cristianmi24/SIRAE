@@ -3,8 +3,8 @@ import mongoose, { model, Schema, type Model, type Types } from "mongoose";
 const base = { timestamps: true, versionKey: false as const };
 const oid = Schema.Types.ObjectId;
 
-export interface SubjectRecord { institutionId: Types.ObjectId; name: string; code?: string; courseGroupIds: Types.ObjectId[]; active: boolean; createdBy: Types.ObjectId }
-const subjectSchema = new Schema<SubjectRecord>({ institutionId: { type: oid, ref: "Institution", required: true, index: true }, name: { type: String, required: true, trim: true, maxlength: 100 }, code: { type: String, trim: true, maxlength: 32 }, courseGroupIds: [{ type: oid, ref: "CourseGroup" }], active: { type: Boolean, default: true }, createdBy: { type: oid, ref: "User", required: true } }, base);
+export interface SubjectRecord { institutionId: Types.ObjectId; name: string; code?: string; courseGroupIds: Types.ObjectId[]; grades?: string[]; active: boolean; createdBy: Types.ObjectId }
+const subjectSchema = new Schema<SubjectRecord>({ institutionId: { type: oid, ref: "Institution", required: true, index: true }, name: { type: String, required: true, trim: true, maxlength: 100 }, code: { type: String, trim: true, maxlength: 32 }, courseGroupIds: [{ type: oid, ref: "CourseGroup" }], grades: [{ type: String, trim: true, maxlength: 4 }], active: { type: Boolean, default: true }, createdBy: { type: oid, ref: "User", required: true } }, base);
 subjectSchema.index({ institutionId: 1, name: 1 }, { unique: true });
 
 export interface PeriodRecord { institutionId: Types.ObjectId; name: string; startsOn: Date; endsOn: Date; active: boolean; scale: { min: number; max: number; bands: { label: string; min: number; max: number }[] }; createdBy: Types.ObjectId }

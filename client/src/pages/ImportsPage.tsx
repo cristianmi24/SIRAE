@@ -7,7 +7,7 @@ import { isLimitError, RequestError } from "../components/LimitNotice";
 
 const fields = [
   { key: "firstName", label: "Nombre", required: true }, { key: "lastName", label: "Apellido", required: true },
-  { key: "grade", label: "Curso" }, { key: "group", label: "Grupo" }, { key: "subject", label: "Asignatura" }, { key: "document", label: "Código (opcional)" },
+  { key: "grade", label: "Grado" }, { key: "group", label: "Grupo" }, { key: "subject", label: "Asignatura" }, { key: "document", label: "Código (opcional)" },
 ];
 
 export function ImportsPage() {

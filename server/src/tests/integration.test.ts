@@ -24,7 +24,7 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return agent;
   }
-  async function createCourse(agent: Agent, grade: string, group = "A") {
+  async function createCourse(agent: Agent, grade: string, group = "1") {
     return post(agent, "/api/course-groups", { grade, group, academicYear: 2026 });
   }
 
@@ -94,7 +94,7 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
     beforeAll(async () => {
       institution = await register("inst1", "INSTITUTION", { institutionName: "Colegio Uno" });
       courses = [];
-      for (let i = 1; i <= 7; i++) courses.push((await createCourse(institution, `Grado ${i}`)).body.item.id);
+      for (let i = 1; i <= 7; i++) courses.push((await createCourse(institution, String(i))).body.item.id);
     });
 
     it("rechaza asignar más de 6 cursos a un docente", async () => {
@@ -293,6 +293,42 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
       expect((await agent.get("/api/students/zzz")).status).toBe(400);
     });
   });
+  describe("grados, grupos y materias por grado", () => {
+    it("solo acepta grados 1 a 11 y grupos 1, 2 o 3", async () => {
+      const agent = await register("docente-grados", "PERSONAL");
+      expect((await createCourse(agent, "Licenciatura en Informática", "Grupo 1")).status).toBe(400);
+      expect((await createCourse(agent, "12", "1")).status).toBe(400);
+      expect((await createCourse(agent, "6", "4")).status).toBe(400);
+      const ok = await createCourse(agent, "6°", "1");
+      expect(ok.status, JSON.stringify(ok.body)).toBe(201);
+      expect(ok.body.item).toMatchObject({ grade: "6", group: "1" });
+      const template = await agent.get("/api/learning/imports/templates?format=csv");
+      expect(template.text).toContain("grado,grupo");
+      expect(template.text).not.toContain("curso");
+    }, 60_000);
+
+    it("crea materias por grado, las vincula a los cursos y a los cursos nuevos de ese grado", async () => {
+      const agent = await register("docente-materias", "PERSONAL");
+      await createCourse(agent, "9", "1"); await createCourse(agent, "8", "1");
+      const created = await post(agent, "/api/learning/subjects", { name: "Matemáticas", grades: ["8", "9"] });
+      expect(created.status, JSON.stringify(created.body)).toBe(201);
+      let list = (await agent.get("/api/learning/subjects")).body.items;
+      expect(list).toHaveLength(1);
+      expect(list[0].grades).toEqual(["8", "9"]);
+      expect(list[0].courseGroupIds).toHaveLength(2);
+      // Un curso nuevo del grado 9 queda con la materia.
+      await createCourse(agent, "9", "2");
+      list = (await agent.get("/api/learning/subjects")).body.items;
+      expect(list[0].courseGroupIds).toHaveLength(3);
+      // Repetir el nombre agrega grados, no duplica.
+      const again = await post(agent, "/api/learning/subjects", { name: "matemáticas", grades: ["11"] });
+      expect(again.body.item.merged).toBe(true);
+      expect((await agent.get("/api/learning/subjects")).body.items).toHaveLength(1);
+      expect((await post(agent, "/api/learning/subjects", { name: "Arte", grades: ["12"] })).status).toBe(400);
+      expect((await post(agent, "/api/learning/subjects", { name: "Arte", grades: [] })).status).toBe(400);
+    }, 90_000);
+  });
+
   describe("QR del estudiante en varias materias", () => {
     it("el mismo QR registra la asistencia de la clase donde se escanea, sin mezclar materias ni cursos", async () => {
       const { Student } = await import("../models/index.js");

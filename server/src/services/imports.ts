@@ -3,6 +3,7 @@ import { parse as parseCsv } from "csv-parse/sync";
 import ExcelJS from "exceljs";
 import { fileTypeFromBuffer } from "file-type";
 import { Types } from "mongoose";
+import { GRADE_GROUP_HELP, parseGrade, parseGroup } from "../../../shared/courses.js";
 import { ImportJob, Subject } from "../models/learning.js";
 import { CourseGroup, Enrollment, Student } from "../models/index.js";
 import { assertCanCreateCourses, countActiveCourses, rollbackCourseIfOverLimit } from "./account-limits.js";
@@ -110,25 +111,27 @@ async function validateRows(context: AuthContext, kind: "students", rows: Record
   for (let i = 0; i < rows.length; i++) {
     const source = rows[i]!; const line = i + 2;
     const firstName = mappedValue(source, mapping, "firstName"); const lastName = mappedValue(source, mapping, "lastName"); const document = mappedValue(source, mapping, "document");
-    const grade = mappedValue(source, mapping, "grade"); const group = mappedValue(source, mapping, "group"); 
+    const rawGrade = mappedValue(source, mapping, "grade"); const rawGroup = mappedValue(source, mapping, "group");
+    const parsedGrade = rawGrade ? parseGrade(rawGrade) : null; const parsedGroup = rawGroup ? parseGroup(rawGroup) : null;
+    const grade = parsedGrade ?? rawGrade; const group = parsedGroup ?? rawGroup;
     let invalid = false;
-    if (!isAdmin && (!grade || !group)) { errors.push({ row: line, field: "group", message: "Escribe el curso y el grupo; deben ser cursos asignados a tu cuenta." }); invalid = true; }
+    if (!isAdmin && (!grade || !group)) { errors.push({ row: line, field: "group", message: "Escribe el grado y el grupo; deben ser cursos asignados a tu cuenta." }); invalid = true; }
     for (const [field, value, label] of [["firstName", firstName, "Falta el nombre."], ["lastName", lastName, "Falta el apellido."], ] as const) if (!value) { errors.push({ row: line, field, message: label }); invalid = true; }
     let courseGroupId: Types.ObjectId | undefined; let newCourseKey: string | undefined;
     if (grade || group) {
-      if (!grade || !group) { errors.push({ row: line, field: "group", message: "Escribe curso y grupo juntos (por ejemplo: curso 8, grupo A)." }); invalid = true; }
-      else if (grade.length > 64 || group.length > 32) { errors.push({ row: line, field: "group", message: "El curso o el grupo es demasiado largo." }); invalid = true; }
+      if (!grade || !group) { errors.push({ row: line, field: "group", message: "Escribe grado y grupo juntos (por ejemplo: grado 8, grupo 1)." }); invalid = true; }
+      else if (!parsedGrade || !parsedGroup) { errors.push({ row: line, field: parsedGrade ? "group" : "grade", message: `Grado o grupo no válido. ${GRADE_GROUP_HELP}` }); invalid = true; }
       else {
         const key = courseKey(grade, group);
         courseGroupId = groupMap.get(key);
         if (!courseGroupId) {
           if (isAdmin) { newCourseKey = key; if (!newCourses.has(key)) newCourses.set(key, { key, grade, group }); }
-          else { errors.push({ row: line, field: "group", message: `El curso "${grade} ${group}" no está asignado a tu cuenta.` }); invalid = true; }
+          else { errors.push({ row: line, field: "group", message: `El grado ${grade} grupo ${group} no está asignado a tu cuenta.` }); invalid = true; }
         }
       }
     }
     const subjectNames = [...new Set(mappedValue(source, mapping, "subject").split(/[;,/]/).map((x) => x.trim()).filter(Boolean))];
-    if (subjectNames.length && !(grade && group)) { errors.push({ row: line, field: "subject", message: "Para vincular la asignatura escribe también el curso y el grupo." }); invalid = true; }
+    if (subjectNames.length && !(grade && group)) { errors.push({ row: line, field: "subject", message: "Para vincular la asignatura escribe también el grado y el grupo." }); invalid = true; }
     for (const subjectName of subjectNames) {
       if (subjectName.length > 100) { errors.push({ row: line, field: "subject", message: "El nombre de la asignatura es demasiado largo." }); invalid = true; continue; }
       if (!isAdmin && !subjectMap.has(normalizeForLookup(subjectName))) { errors.push({ row: line, field: "subject", message: `La asignatura "${subjectName}" no existe; pídele al administrador que la cree.` }); invalid = true; }
@@ -185,6 +188,7 @@ async function createMissingCourses(context: AuthContext, courses: NewCourse[]) 
     await assertCanCreateCourses(context);
     const row = await CourseGroup.create({ institutionId: tenantId(context), grade: course.grade, gradeNormalized, group: course.group, groupNormalized, academicYear, active: true });
     await rollbackCourseIfOverLimit(context, row._id);
+    await Subject.updateMany({ institutionId: tenantId(context), active: true, grades: row.grade }, { $addToSet: { courseGroupIds: row._id } });
     created.set(course.key, row._id);
     await audit(context, "COURSE_GROUP_CREATED_FROM_IMPORT", "CourseGroup", row._id, undefined, { grade: row.grade, group: row.group, academicYear });
   }

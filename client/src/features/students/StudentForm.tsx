@@ -1,3 +1,4 @@
+import { GRADES, GROUPS } from "../../../../shared/courses";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -53,7 +54,7 @@ export function StudentForm({
     mutationFn: async ({ newGrade, newGroup, ...values }) => {
       if (values.courseGroupId === NEW_COURSE) {
         const grade = newGrade?.trim() ?? ""; const group = newGroup?.trim() ?? "";
-        if (!grade || !group) throw new ApiClientError(400, "COURSE_REQUIRED", "Escribe el curso y el grupo nuevos.");
+        if (!grade || !group) throw new ApiClientError(400, "COURSE_REQUIRED", "Elige el grado y el grupo del curso nuevo.");
         const existing = groups.data?.items.find((item) => item.grade.toLowerCase() === grade.toLowerCase() && item.group.toLowerCase() === group.toLowerCase());
         values.courseGroupId = existing?.id ?? (await api.createCourseGroup({ grade, group, academicYear: new Date().getFullYear() })).item.id;
       }
@@ -96,9 +97,9 @@ export function StudentForm({
           <div className="form-grid">
             <div className="form-field"><label htmlFor="firstName">Nombres</label><input id="firstName" autoComplete="off" aria-invalid={Boolean(errors.firstName)} aria-describedby="firstName-error" placeholder="Ej. Juliana" {...form.register("firstName")} />{errors.firstName ? <small id="firstName-error" role="alert">{errors.firstName.message}</small> : null}</div>
             <div className="form-field"><label htmlFor="lastName">Apellidos</label><input id="lastName" autoComplete="off" aria-invalid={Boolean(errors.lastName)} aria-describedby="lastName-error" placeholder="Ej. Salazar Ruiz" {...form.register("lastName")} />{errors.lastName ? <small id="lastName-error" role="alert">{errors.lastName.message}</small> : null}</div>
-            <div className="form-field form-full"><label htmlFor="courseGroupId">Curso y grupo</label><select id="courseGroupId" {...form.register("courseGroupId")}><option value="">Sin asignar todavía</option>{groups.data?.items.map((group) => <option value={group.id} key={group.id}>Curso {group.grade} · Grupo {group.group}</option>)}{canCreateCourse && <option value={NEW_COURSE} disabled={courseLimitReached}>{courseLimitReached ? `+ Crear curso nuevo (límite de ${plan.data?.item.limits.courses} cursos alcanzado)` : "+ Crear curso nuevo"}</option>}</select></div>
+            <div className="form-field form-full"><label htmlFor="courseGroupId">Grado y grupo</label><select id="courseGroupId" {...form.register("courseGroupId")}><option value="">Sin asignar todavía</option>{groups.data?.items.map((group) => <option value={group.id} key={group.id}>Grado {group.grade} · Grupo {group.group}</option>)}{canCreateCourse && <option value={NEW_COURSE} disabled={courseLimitReached}>{courseLimitReached ? `+ Crear curso nuevo (límite de ${plan.data?.item.limits.courses} cursos alcanzado)` : "+ Crear curso nuevo"}</option>}</select></div>
             {canCreateCourse && courseLimitReached && <div className="form-full"><LimitNotice title="Tu cuenta llegó al máximo de cursos" message={`Tienes ${plan.data?.item.usage.courses} de ${plan.data?.item.limits.courses} cursos. Puedes seguir registrando estudiantes en los cursos existentes.`} /></div>}
-            {isNewCourse && <div className="form-full new-course-row"><div className="form-field"><label htmlFor="newGrade">Curso nuevo</label><input id="newGrade" placeholder="Ej. 8" {...form.register("newGrade")} /></div><div className="form-field"><label htmlFor="newGroup">Grupo</label><input id="newGroup" placeholder="Ej. A" {...form.register("newGroup")} /></div></div>}
+            {isNewCourse && <div className="form-full new-course-row"><div className="form-field"><label htmlFor="newGrade">Grado</label><select id="newGrade" {...form.register("newGrade")}><option value="">Elige el grado</option>{GRADES.map((value) => <option key={value} value={value}>{value}{Number(value) >= 6 ? " · Secundaria" : " · Primaria"}</option>)}</select></div><div className="form-field"><label htmlFor="newGroup">Grupo</label><select id="newGroup" {...form.register("newGroup")}><option value="">Elige el grupo</option>{GROUPS.map((value) => <option key={value} value={value}>{value}</option>)}</select></div></div>}
             {student ? <p className="helper-text form-full">Código del estudiante: <strong className="code-tag">{student.document}</strong></p> : <p className="helper-text form-full">Al guardar, el sistema le asigna un código único para registrar su asistencia.</p>}
           </div>
           {error && isLimitError(error) ? <RequestError error={error} /> : error ? <p className="form-error" role="alert">{(error as Error).message}</p> : null}

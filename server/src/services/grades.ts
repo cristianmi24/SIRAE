@@ -9,15 +9,42 @@ function iso(value: Date): string { return value.toISOString(); }
 // En modo promedio todas las notas pesan lo mismo; en modo porcentajes cada nota usa su peso.
 export function activityWeight(assessment: { weightPercent: number }, category?: { mode?: string | null }): number { return category?.mode === "AVERAGE" ? 1 : assessment.weightPercent; }
 const DEFAULT_CATEGORY = "Notas del periodo";
+// Cada materia indica en qué grados se dicta (los guardados y los de sus cursos), para mostrarlas ordenadas por grado.
 export async function listSubjects(context: AuthContext) {
   const rows = await Subject.find({ institutionId: tenantId(context), active: true, ...(context.membership.role === "ADMIN" ? {} : { courseGroupIds: { $in: context.membership.courseGroupIds.map((value) => objectId(value)) } }) }).sort({ name: 1 }).lean();
-  return rows.map((x) => ({ id: String(x._id), name: x.name, code: x.code, active: x.active, courseGroupIds: x.courseGroupIds.map(String) }));
+  const ids = [...new Set(rows.flatMap((x) => x.courseGroupIds.map(String)))];
+  const courses = ids.length ? await CourseGroup.find({ _id: { $in: ids.map((value) => objectId(value)) }, institutionId: tenantId(context) }).select("grade").lean() : [];
+  const gradeOf = new Map(courses.map((course) => [String(course._id), course.grade]));
+  return rows.map((x) => ({ id: String(x._id), name: x.name, code: x.code, active: x.active, courseGroupIds: x.courseGroupIds.map(String), grades: [...new Set([...(x.grades ?? []), ...x.courseGroupIds.map((id) => gradeOf.get(String(id))).filter((grade): grade is string => Boolean(grade))])].sort((p, q) => Number(p) - Number(q)) }));
 }
-export async function createSubject(context: AuthContext, input: { name: string; code?: string; courseGroupIds: string[] }) {
+// Crea la materia para uno o varios grados. Si ya existe una con ese nombre, le suma los grados (no se duplica).
+// El administrador la vincula a todos los cursos de esos grados; un docente, solo a los suyos.
+export async function createSubject(context: AuthContext, input: { name: string; code?: string; courseGroupIds: string[]; grades: string[] }) {
   for (const groupId of input.courseGroupIds) { assertGroupAccess(context, groupId); if (!await CourseGroup.exists({ _id: objectId(groupId), institutionId: tenantId(context), active: true })) throw forbiddenEntity(); }
-  const row = await Subject.create({ institutionId: tenantId(context), name: input.name, code: input.code, courseGroupIds: input.courseGroupIds.map((x) => objectId(x)), createdBy: actorId(context) });
-  await audit(context, "SUBJECT_CREATED", "Subject", row._id, undefined, { name: row.name });
-  return { id: String(row._id), name: row.name, code: row.code, active: row.active, courseGroupIds: row.courseGroupIds.map(String) };
+  const isAdmin = context.membership.role === "ADMIN";
+  const scope = isAdmin ? {} : { _id: { $in: context.membership.courseGroupIds.map((value) => objectId(value)) } };
+  const gradeCourses = input.grades.length ? await CourseGroup.find({ institutionId: tenantId(context), active: true, grade: { $in: input.grades }, ...scope }).select("_id grade").lean() : [];
+  if (!isAdmin) {
+    const have = new Set(gradeCourses.map((course) => course.grade));
+    const missing = input.grades.filter((grade) => !have.has(grade));
+    if (missing.length) throw new AppError(403, "GRADE_NOT_ASSIGNED", `No tienes cursos asignados en el grado ${missing.join(", ")}.`);
+  }
+  const courseIds = [...new Set([...input.courseGroupIds, ...gradeCourses.map((course) => String(course._id))])].map((value) => objectId(value));
+  const escaped = input.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const existing = await Subject.findOne({ institutionId: tenantId(context), name: { $regex: `^${escaped}$`, $options: "i" } });
+  const row = existing
+    ? await Subject.findOneAndUpdate({ _id: existing._id }, { $set: { active: true }, $addToSet: { courseGroupIds: { $each: courseIds }, grades: { $each: input.grades } } }, { new: true })
+    : await Subject.create({ institutionId: tenantId(context), name: input.name, code: input.code, courseGroupIds: courseIds, grades: input.grades, createdBy: actorId(context) });
+  if (!row) throw forbiddenEntity();
+  await audit(context, existing ? "SUBJECT_GRADES_ADDED" : "SUBJECT_CREATED", "Subject", row._id, undefined, { name: row.name, grades: input.grades });
+  return { id: String(row._id), name: row.name, code: row.code, active: row.active, courseGroupIds: row.courseGroupIds.map(String), grades: row.grades ?? [], merged: Boolean(existing) };
+}
+// Quita la materia de la lista (no borra notas ni asistencia ya registradas).
+export async function deactivateSubject(context: AuthContext, id: string) {
+  const row = await Subject.findOneAndUpdate({ _id: objectId(id), institutionId: tenantId(context), active: true }, { $set: { active: false } }, { new: true });
+  if (!row) throw forbiddenEntity();
+  await audit(context, "SUBJECT_DEACTIVATED", "Subject", row._id, undefined, { name: row.name });
+  return { id: String(row._id) };
 }
 export async function listPeriods(context: AuthContext) {
   const rows = await AcademicPeriod.find({ institutionId: tenantId(context) }).sort({ startsOn: -1 }).lean();

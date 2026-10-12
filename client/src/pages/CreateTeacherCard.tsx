@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
+import { GRADES, GROUPS } from "../../../shared/courses";
 import { api } from "../services/api";
 import { RequestError } from "../components/LimitNotice";
 
@@ -46,8 +47,8 @@ export function CreateTeacherCard({ maxCourses, disabled }: { maxCourses: number
           {!groups.data?.items.length && <span className="helper-text">Todavía no hay cursos. Crea uno aquí abajo.</span>}</div>
       </fieldset>
       <div className="form-full" style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "end" }}>
-        <label className="form-field" style={{ flex: "1 1 120px" }}><span>Nuevo curso: grado</span><input value={grade} onChange={(event) => setGrade(event.target.value)} maxLength={20} placeholder="Ej. 6" /></label>
-        <label className="form-field" style={{ flex: "1 1 120px" }}><span>Grupo</span><input value={group} onChange={(event) => setGroup(event.target.value)} maxLength={20} placeholder="Ej. A" /></label>
+        <label className="form-field" style={{ flex: "1 1 120px" }}><span>Nuevo curso: grado</span><select value={grade} onChange={(event) => setGrade(event.target.value)}><option value="">Grado</option>{GRADES.map((value) => <option key={value} value={value}>{value}{Number(value) >= 6 ? " · Secundaria" : " · Primaria"}</option>)}</select></label>
+        <label className="form-field" style={{ flex: "1 1 120px" }}><span>Grupo</span><select value={group} onChange={(event) => setGroup(event.target.value)}><option value="">Grupo</option>{GROUPS.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
         <button type="button" className="button button-secondary" disabled={createCourse.isPending || !grade.trim() || !group.trim()} onClick={() => createCourse.mutate()}>{createCourse.isPending ? "Creando…" : "Crear curso"}</button>
       </div>
       <div className="form-full"><button className="button button-primary" disabled={create.isPending || disabled || !ready}>{create.isPending ? "Creando…" : "Crear docente"}</button></div>

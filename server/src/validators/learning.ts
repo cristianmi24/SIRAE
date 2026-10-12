@@ -15,7 +15,7 @@ const scheduleFields = z.object({
   endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   toleranceMinutes: z.number().int().min(0).max(180),
 });
-export const subjectInput = z.object({ name: name.max(100), code: z.string().trim().max(32).optional(), courseGroupIds: z.array(id).min(1).max(100) });
+export const subjectInput = z.object({ name: name.max(100), code: z.string().trim().max(32).optional(), courseGroupIds: z.array(id).max(100).default([]), grades: z.array(z.string().trim().regex(/^(?:[1-9]|10|11)$/, "El grado va de 1 a 11.")).max(11).default([]) }).refine((value) => value.courseGroupIds.length > 0 || value.grades.length > 0, { message: "Elige al menos un grado.", path: ["grades"] });
 export const periodInput = z.object({ name: z.string().trim().min(1).max(80), startsOn: dateKey, endsOn: dateKey, min: z.number().finite(), max: z.number().finite(), bands: z.array(z.object({ label: z.string().trim().min(1).max(40), min: z.number().finite(), max: z.number().finite() })).min(1).max(12) })
   .refine((value) => value.startsOn <= value.endsOn, { path: ["endsOn"], message: "La fecha final debe ser posterior a la inicial." })
   .refine((value) => value.min < value.max && value.bands.every((band) => band.min >= value.min && band.max <= value.max && band.min <= band.max), { path: ["bands"], message: "La escala o sus rangos no son válidos." })
