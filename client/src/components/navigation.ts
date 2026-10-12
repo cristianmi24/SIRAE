@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Building2, BookOpenText, CalendarClock, FileBarChart2, Home, NotebookPen, QrCode, Settings2, ShieldCheck, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, MessageSquareWarning, Building2, BookOpenText, CalendarClock, FileBarChart2, Home, NotebookPen, QrCode, Settings2, ShieldCheck, TrendingUp, Users, type LucideIcon } from "lucide-react";
 
 export type NavItem = { to: string; label: string; icon: LucideIcon; tone: string; step?: number; shortcut?: string; short?: string };
 export type NavSection = { title: string; items: NavItem[] };
@@ -10,6 +10,7 @@ export const monitoring: NavItem = { to: "/", label: "Monitoreo", icon: Activity
 export const platformInstitutions: NavItem = { to: "/institutions", label: "Instituciones", icon: Building2, tone: "violet", shortcut: "2" };
 export const platformAdminsItem: NavItem = { to: "/admins", label: "Administradores", short: "Admins", icon: ShieldCheck, tone: "pink", shortcut: "3" };
 export const platformWebStats: NavItem = { to: "/analytics", label: "Analytics", icon: TrendingUp, tone: "blue", shortcut: "4" };
+export const platformComplaints: NavItem = { to: "/complaints", label: "Quejas", icon: MessageSquareWarning, tone: "coral", shortcut: "6" };
 export const platformTeachers: NavItem = { to: "/teachers", label: "Docentes", icon: Users, tone: "green", shortcut: "5" };
 export const sections: NavSection[] = [
   { title: "Preparar el aula", items: [
@@ -40,7 +41,7 @@ export function adminItemsFor(user: { role: string | null; accountType?: string 
 }
 
 export function navItemsFor(user: { role: string | null; platformAdmin?: boolean; accountType?: string }): NavItem[] {
-  if (user.platformAdmin) return [monitoring, platformInstitutions, platformAdminsItem, platformTeachers, platformWebStats];
+  if (user.platformAdmin) return [monitoring, platformInstitutions, platformAdminsItem, platformTeachers, platformWebStats, platformComplaints];
   return [home, ...sections.flatMap((section) => section.items), ...adminItemsFor(user)];
 }
 

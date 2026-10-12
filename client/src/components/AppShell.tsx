@@ -9,7 +9,7 @@ import { CommandPalette, ShortcutsHelp } from "./CommandPalette";
 import { StatusChip } from "./Feedback";
 import { Byline } from "./Byline";
 import { TopProgress } from "./Loading";
-import { adminItemsFor, breadcrumbsFor, home, monitoring, navItemsFor, platformAdminsItem, platformInstitutions, platformTeachers, platformWebStats, sections, type NavItem } from "./navigation";
+import { adminItemsFor, breadcrumbsFor, home, monitoring, navItemsFor, platformAdminsItem, platformComplaints, platformInstitutions, platformTeachers, platformWebStats, sections, type NavItem } from "./navigation";
 
 function NavItemLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {
   const Icon = item.icon;
@@ -21,7 +21,7 @@ function NavItemLink({ item, onClick }: { item: NavItem; onClick?: () => void })
 }
 
 function NavContent({ platformAdmin, adminNav, onNavigate }: { platformAdmin: boolean; adminNav: NavItem[]; onNavigate?: () => void }) {
-  if (platformAdmin) return <nav className="nav-list" aria-label="Módulos"><NavItemLink item={monitoring} onClick={onNavigate} /><NavItemLink item={platformInstitutions} onClick={onNavigate} /><NavItemLink item={platformAdminsItem} onClick={onNavigate} /><NavItemLink item={platformTeachers} onClick={onNavigate} /><NavItemLink item={platformWebStats} onClick={onNavigate} /></nav>;
+  if (platformAdmin) return <nav className="nav-list" aria-label="Módulos"><NavItemLink item={monitoring} onClick={onNavigate} /><NavItemLink item={platformInstitutions} onClick={onNavigate} /><NavItemLink item={platformAdminsItem} onClick={onNavigate} /><NavItemLink item={platformTeachers} onClick={onNavigate} /><NavItemLink item={platformWebStats} onClick={onNavigate} /><NavItemLink item={platformComplaints} onClick={onNavigate} /></nav>;
   return <nav className="nav-list" aria-label="Módulos">
     <NavItemLink item={home} onClick={onNavigate} />
     {sections.map((section) => <div className="nav-section" key={section.title}><p className="nav-section-title">{section.title}</p>{section.items.map((item) => <NavItemLink key={item.to} item={item} onClick={onNavigate} />)}</div>)}

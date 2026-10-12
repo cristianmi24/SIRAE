@@ -34,6 +34,8 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
     process.env.AUTH_JWT_SECRET = "x".repeat(48);
     process.env.APP_ORIGIN = ORIGIN;
     process.env.NODE_ENV = "test";
+    process.env.AULANEXO_ADMIN_EMAIL = `admin.${run}@sirae.test`;
+    process.env.AULANEXO_ADMIN_PASSWORD = "clave-admin-123";
     const { createApp, addFinalErrorHandling } = await import("../app.js");
     const { connectToDatabase } = await import("../config/database.js");
     await connectToDatabase();
@@ -236,6 +238,36 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
       const stranger = await register("docente-ajeno", "PERSONAL");
       expect((await post(stranger, `/api/learning/attendance/sessions/${sessionId}/reopen`)).status).toBe(404);
       expect((await post(request.agent(app), `/api/learning/attendance/sessions/${sessionId}/reopen`)).status).toBe(401);
+    });
+  });
+
+  describe("quejas y solicitudes", () => {
+    const valid = { type: "ELIMINACION_DATOS", requesterRole: "PADRE_ACUDIENTE", name: "Marta Gómez", email: "marta@correo.test", studentName: "Ana Gómez", institutionName: "Colegio Uno", message: "Solicito eliminar los datos de mi hija del sistema.", consent: true };
+    it("recibe la solicitud pública y la entrega solo al administrador de la plataforma", async () => {
+      const visitor = request.agent(app);
+      const sent = await post(visitor, "/api/public/complaints", valid);
+      expect(sent.status, JSON.stringify(sent.body)).toBe(201);
+      expect(sent.body.ticket).toMatch(/^Q-[A-Z2-9]{6}$/);
+      expect((await post(visitor, "/api/public/complaints", { ...valid, consent: false })).status).toBe(400);
+      expect((await post(visitor, "/api/public/complaints", { ...valid, website: "spam.example" })).status).toBe(400);
+      expect((await post(visitor, "/api/public/complaints", { ...valid, message: { $gt: "" } })).status).toBe(400);
+
+      const teacher = await register("docente-quejas", "PERSONAL");
+      expect((await teacher.get("/api/platform/complaints")).status).toBe(403);
+      expect((await request(app).get("/api/platform/complaints")).status).toBe(401);
+
+      const admin = request.agent(app);
+      expect((await post(admin, "/api/auth/login", { email: process.env.AULANEXO_ADMIN_EMAIL, password: "clave-admin-123" })).status).toBe(200);
+      const list = await admin.get("/api/platform/complaints");
+      expect(list.status).toBe(200);
+      const item = list.body.items.find((row: { ticket: string }) => row.ticket === sent.body.ticket);
+      expect(item).toMatchObject({ type: "ELIMINACION_DATOS", status: "NUEVA", studentName: "Ana Gómez" });
+      expect(list.body.counts.NUEVA).toBeGreaterThanOrEqual(1);
+      const done = await patch(admin, `/api/platform/complaints/${item.id}`, { status: "RESUELTA", adminNote: "Datos eliminados" });
+      expect(done.status).toBe(200);
+      expect(done.body.item).toMatchObject({ status: "RESUELTA", adminNote: "Datos eliminados" });
+      expect(done.body.item.resolvedAt).toBeTruthy();
+      expect((await patch(teacher, `/api/platform/complaints/${item.id}`, { status: "NUEVA" })).status).toBe(403);
     });
   });
 

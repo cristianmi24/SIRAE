@@ -11,8 +11,10 @@ const sections = [
   { id: "estudiantes", label: "Consulta del estudiante" },
   { id: "asistencia", label: "Registro por código" },
   { id: "seguridad", label: "Seguridad" },
+  { id: "responsabilidad", label: "Responsabilidad" },
   { id: "derechos", label: "Tus derechos" },
   { id: "cookies", label: "Cookies y almacenamiento" },
+  { id: "quejas", label: "Quejas y solicitudes" },
 ];
 
 // Términos, privacidad y seguridad en lenguaje sencillo. Página pública.
@@ -40,7 +42,7 @@ export function LegalPage() {
           <ul>
             <li>SIRAE es una herramienta de apoyo para docentes e instituciones educativas. Al crear una cuenta aceptas estos términos.</li>
             <li>Cada docente es responsable de la información que registra: que los estudiantes, notas y asistencias sean correctos y que los use solo con fines educativos.</li>
-            <li>Si registras a menores de edad, debes contar con la autorización de la institución y, cuando corresponda, de sus padres o acudientes.</li>
+            <li>Al registrar estudiantes, en especial menores de edad, el docente o la institución declara que cuenta con la autorización de sus padres, madres o acudientes y de la institución. SIRAE asume que esa autorización existe desde el momento en que se ingresan los datos.</li>
             <li>Entrega a cada estudiante su código de forma personal. No publiques la lista completa de códigos.</li>
             <li>No uses SIRAE para fines distintos a la gestión académica ni intentes acceder a información de otras aulas.</li>
             <li>Los análisis y alertas describen los datos registrados; no reemplazan el criterio del docente. Que asistencia y rendimiento coincidan no demuestra que uno cause el otro.</li>
@@ -109,18 +111,27 @@ export function LegalPage() {
           <p>Toda la comunicación viaja cifrada por HTTPS. Ningún sistema es 100% infalible: si detectas un problema de seguridad, escribe a <a href={`mailto:${ADMIN_CONTACT_EMAIL}`}>{ADMIN_CONTACT_EMAIL}</a>.</p>
         </section>
 
+        <section id="responsabilidad">
+          <h2>7. Responsabilidad sobre los datos ingresados</h2>
+          <ul>
+            <li>SIRAE es una herramienta: <strong>no decide qué datos se registran</strong>. Quien los ingresa (el docente o la institución) es responsable de que sean correctos, necesarios y de contar con la autorización para tratarlos.</li>
+            <li>SIRAE no pide datos sensibles. <strong>No se hace responsable</strong> por datos sensibles u otra información que los usuarios ingresen por su cuenta en campos de texto libre (por ejemplo, observaciones o nombres de cursos), desde el momento en que se ingresan.</li>
+            <li>Al ingresar datos de estudiantes se entiende que se cuenta con el permiso de sus padres, madres o acudientes. Si no existe ese permiso, ellos pueden pedir en cualquier momento que los datos se eliminen.</li>
+          </ul>
+        </section>
+
         <section id="derechos">
-          <h2>7. Derechos sobre los datos</h2>
+          <h2>8. Derechos sobre los datos</h2>
           <p>De acuerdo con la Ley 1581 de 2012 de protección de datos personales en Colombia, los titulares (y, en el caso de menores, sus padres o acudientes) pueden <strong>conocer, actualizar, corregir y pedir la eliminación</strong> de sus datos.</p>
           <ul>
-            <li>Para estudiantes: la solicitud se hace al docente o a la institución, que puede editar o eliminar al estudiante desde SIRAE.</li>
+            <li><strong>Eliminación de datos de un estudiante:</strong> el padre, madre o acudiente (o el estudiante, si es mayor de edad) puede pedir que se eliminen sus datos de SIRAE. La solicitud se hace en el <Link to="/quejas">formulario de quejas y solicitudes</Link> o directamente al docente o la institución, que pueden eliminar al estudiante desde SIRAE.</li>
             <li>Al eliminar un estudiante, un curso o "todo", se borran también su asistencia, notas y observaciones. Esta acción no se puede deshacer.</li>
             <li>Los docentes y las instituciones pueden pedir la eliminación de su cuenta al administrador de la plataforma: <a href={`mailto:${ADMIN_CONTACT_EMAIL}`}>{ADMIN_CONTACT_EMAIL}</a>.</li>
           </ul>
         </section>
 
         <section id="cookies">
-          <h2>8. Cookies y almacenamiento en el navegador</h2>
+          <h2>9. Cookies y almacenamiento en el navegador</h2>
           <p>SIRAE utiliza almacenamiento del navegador para mantener las sesiones de los docentes, generar un identificador aleatorio para el control del registro de asistencia y conservar preferencias locales, como el tema visual y los borradores de observaciones.</p>
           <table className="legal-table">
             <thead><tr><th>Qué se guarda</th><th>Para qué</th><th>Duración</th></tr></thead>
@@ -135,6 +146,10 @@ export function LegalPage() {
           <p>Si se encuentra habilitado Google Analytics, también se utilizan cookies propias de analítica para medir las visitas, distinguir visitantes y conocer cómo se utiliza el sitio web. Estos datos se emplean para elaborar estadísticas de uso y mejorar el servicio.</p>
           <p>SIRAE no utiliza cookies publicitarias de Google Ads, salvo que se incorporen y configuren expresamente dichos servicios. La información detallada sobre las tecnologías utilizadas y las opciones de privacidad se encuentra en esta política de privacidad del sistema.</p>
           <p>Puedes borrar las cookies y el almacenamiento desde la configuración de tu navegador. Si borras la cookie de sesión tendrás que volver a iniciar sesión.</p>
+        </section>
+        <section id="quejas">
+          <h2>10. Quejas, reclamos y solicitudes</h2>
+          <p>Cualquier persona puede enviar una queja, un reclamo o una solicitud (incluida la eliminación de datos) en el formulario de <Link to="/quejas">quejas y solicitudes</Link>. Cada envío recibe un número de radicado y llega directamente al administrador de la plataforma, que responde al correo indicado.</p>
         </section>
         <a className="legal-top" href="#top"><ArrowUp size={16} aria-hidden="true" /> Volver al inicio</a>
         <footer className="legal-footer"><Byline /><span>SIRAE · Sistema de Identificación y Registro de Asistencia Educativa</span></footer>

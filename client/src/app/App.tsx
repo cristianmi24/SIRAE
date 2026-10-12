@@ -36,6 +36,8 @@ const NotFoundPage = lazyPage(() => import("../pages/NotFoundPage").then((page) 
 const PlatformInstitutionsPage = lazyPage(() => import("../pages/PlatformInstitutionsPage").then((page) => ({ default: page.PlatformInstitutionsPage })));
 const PlatformAdminsPage = lazyPage(() => import("../pages/PlatformAdminsPage").then((page) => ({ default: page.PlatformAdminsPage })));
 const WebAnalyticsPage = lazyPage(() => import("../pages/WebAnalyticsPage").then((page) => ({ default: page.WebAnalyticsPage })));
+const ComplaintPage = lazyPage(() => import("../pages/ComplaintPage").then((page) => ({ default: page.ComplaintPage })));
+const PlatformComplaintsPage = lazyPage(() => import("../pages/PlatformComplaintsPage").then((page) => ({ default: page.PlatformComplaintsPage })));
 const PlatformTeachersPage = lazyPage(() => import("../pages/PlatformTeachersPage").then((page) => ({ default: page.PlatformTeachersPage })));
 const InstitutionPage = lazyPage(() => import("../pages/InstitutionPage").then((page) => ({ default: page.InstitutionPage })));
 const AuditPage = lazyPage(() => import("../pages/AuditPage").then((page) => ({ default: page.AuditPage })));
@@ -80,7 +82,6 @@ function SignInScreen() {
         </nav>
         <div className="marketing-actions">
           <button type="button" className="topbar-button" onClick={cycleTheme} aria-label="Cambiar tema claro u oscuro" title="Tema claro/oscuro (Alt+T)"><Sun size={18} className="icon-light" /><Moon size={18} className="icon-dark" /></button>
-          <button type="button" className="button button-secondary marketing-login" onClick={() => { setMode("login"); setAudience("teacher"); document.getElementById("acceso")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><LockKeyhole size={17} /> <span>Iniciar sesión</span></button>
         </div>
       </header>
 
@@ -121,7 +122,7 @@ function SignInScreen() {
             <label className="form-field"><span>Correo</span><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
             <label className="form-field"><span>Clave</span><span className="password-field"><input type={showPassword ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required /><button type="button" className="password-toggle" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Ocultar clave" : "Mostrar clave"} aria-pressed={showPassword} title={showPassword ? "Ocultar clave" : "Mostrar clave"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span></label>
             {mode === "register" && <p className="helper-text">{accountType === "INSTITUTION" ? "Después de registrarte podrás invitar a tus docentes desde Configuración." : "Si una institución te invitó, regístrate como docente con el mismo correo y entrarás a ella."}</p>}
-            {mode === "register" && <label className="check-line terms-check"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} required /> <span>Acepto los <Link to="/legal" target="_blank">términos, la política de privacidad y seguridad</Link>.</span></label>}
+            {mode === "register" && <label className="check-line terms-check"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} required /> <span>Acepto los <Link to="/legal" target="_blank">términos, la política de privacidad y seguridad</Link> y declaro que cuento con la autorización de padres o acudientes para registrar a los estudiantes.</span></label>}
             {error && <p className="notice notice-error" role="alert">{error}</p>}
             <button className="button button-primary button-wide" disabled={mode === "register" && !accepted}><LockKeyhole size={18} /> {mode === "login" ? "Entrar" : "Registrarme"}</button>
           </form>
@@ -137,7 +138,7 @@ function SignInScreen() {
         <article id="seguridad"><ShieldCheck size={21} aria-hidden="true" /><h2>Privacidad primero</h2><p>Sin documentos ni datos biométricos de los estudiantes. Ellos solo pueden ver su historial, nunca editarlo. <Link to="/legal">Lee cómo protegemos los datos</Link>.</p></article>
       </section>
 
-      <footer className="marketing-footer"><Brand /><Byline /><span>© {new Date().getFullYear()} SIRAE · Sistema de Identificación y Registro de Asistencia Educativa.</span><Link to="/legal">Términos, privacidad y seguridad</Link></footer>
+      <footer className="marketing-footer"><Brand /><Byline /><span>© {new Date().getFullYear()} SIRAE · Sistema de Identificación y Registro de Asistencia Educativa.</span><Link to="/legal">Términos, privacidad y seguridad</Link><Link to="/quejas">Quejas y solicitudes</Link></footer>
     </main>
   );
 }
@@ -160,7 +161,7 @@ function AuthenticatedApplication() {
   if (!auth.data?.authenticated || !auth.data.user) return <SignInScreen />;
 
   if (auth.data.user.platformAdmin) {
-    return <AppShell user={auth.data.user}><Suspense fallback={<LoadingState label="Abriendo módulo…" />}><Routes><Route path="/" element={<MonitoringPage />} /><Route path="/institutions" element={<PlatformInstitutionsPage />} /><Route path="/admins" element={<PlatformAdminsPage />} /><Route path="/teachers" element={<PlatformTeachersPage />} /><Route path="/analytics/*" element={<WebAnalyticsPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></Suspense></AppShell>;
+    return <AppShell user={auth.data.user}><Suspense fallback={<LoadingState label="Abriendo módulo…" />}><Routes><Route path="/" element={<MonitoringPage />} /><Route path="/institutions" element={<PlatformInstitutionsPage />} /><Route path="/admins" element={<PlatformAdminsPage />} /><Route path="/teachers" element={<PlatformTeachersPage />} /><Route path="/complaints" element={<PlatformComplaintsPage />} /><Route path="/analytics/*" element={<WebAnalyticsPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></Suspense></AppShell>;
   }
   return (
     <AppShell user={auth.data.user}>
@@ -199,6 +200,7 @@ export function App() {
   // La página de registro por código es pública: el estudiante no inicia sesión.
   return <BrowserRouter><PageViewTracker /><Routes>
     <Route path="/legal" element={<Suspense fallback={<LoadingState label="Cargando…" />}><LegalPage /></Suspense>} />
+    <Route path="/quejas" element={<Suspense fallback={<LoadingState label="Cargando…" />}><ComplaintPage /></Suspense>} />
     <Route path="/asistencia/:token" element={<Suspense fallback={<LoadingState label="Cargando…" />}><PublicAttendancePage /></Suspense>} />
     <Route path="*" element={<AuthenticatedApplication />} />
   </Routes></BrowserRouter>;
