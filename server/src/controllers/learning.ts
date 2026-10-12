@@ -1,7 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import mongoose from "mongoose";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { hashPassword } from "../services/local-auth.js";
 import { GridFSBucket, type ObjectId } from "mongodb";
 import ExcelJS from "exceljs";
 import type { AuthContext } from "../services/auth-context.js";
@@ -138,16 +139,36 @@ export const invitationCreate = run(async (req, res, auth) => {
     const prior = await Membership.findOne({ userId: existing._id, institutionId: tenantId(auth) });
     if (prior) throw new AppError(409, "MEMBERSHIP_EXISTS", "La cuenta ya tiene una membresía en esta institución.");
     const membership = await Membership.create({ userId: existing._id, institutionId: tenantId(auth), role: body.role, active: true, courseGroupIds: [...new Set(body.courseGroupIds)].map((id) => objectId(id)) });
-    if (body.role === "DOCENTE" && !await teacherSlotsWithinLimit(auth)) { await Membership.deleteOne({ _id: membership._id }); throw teacherLimitError(); }
+    if (body.role === "DOCENTE" && !await teacherSlotsWithinLimit(auth)) { await Membership.deleteOne({ _id: membership._id }); throw teacherLimitError(auth); }
     await audit(auth, "MEMBERSHIP_CREATED", "Membership", membership._id, undefined, { role: body.role, invitedEmailHash: createHash("sha256").update(email).digest("hex") });
     res.status(201).json({ status: "MEMBER_ADDED", message: "La cuenta ya existía; la membresía quedó activa para su próximo acceso." }); return;
   }
   const duplicate = await MembershipInvitation.findOne({ institutionId: tenantId(auth), email, acceptedAt: { $exists: false }, expiresAt: { $gt: new Date() } });
   if (duplicate) throw new AppError(409, "INVITATION_EXISTS", "Ya existe una invitación vigente para ese correo.");
   const invitation = await MembershipInvitation.create({ institutionId: tenantId(auth), email, role: body.role, courseGroupIds: [...new Set(body.courseGroupIds)].map((id) => objectId(id)), invitedBy: actorId(auth), expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) });
-    if (body.role === "DOCENTE" && !await teacherSlotsWithinLimit(auth)) { await MembershipInvitation.deleteOne({ _id: invitation._id }); throw teacherLimitError(); }
+    if (body.role === "DOCENTE" && !await teacherSlotsWithinLimit(auth)) { await MembershipInvitation.deleteOne({ _id: invitation._id }); throw teacherLimitError(auth); }
   await audit(auth, "MEMBERSHIP_INVITED", "MembershipInvitation", invitation._id, undefined, { role: body.role, invitedEmailHash: createHash("sha256").update(email).digest("hex"), expiresAt: invitation.expiresAt.toISOString() });
   res.status(201).json({ status: "INVITED", message: `Invitación creada. La persona debe registrarse o iniciar sesión con ${email}; la invitación vence en 30 días.` });
+});
+// El administrador de una institución crea la cuenta del docente (correo + contraseña) y le asigna cursos.
+// El docente entra de inmediato; no hace falta que se registre ni que se le envíe ningún correo.
+export const teacherAccountCreate = run(async (req, res, auth) => {
+  admin(auth);
+  const body = z.object({ name: z.string().trim().min(2).max(160), email: z.string().trim().email().max(254), password: z.string().min(8).max(200), courseGroupIds: z.array(idSchema.shape.id).min(1, "Asigna al menos un curso al docente.").max(100) }).parse(req.body);
+  const email = body.email.toLowerCase();
+  const courseIds = [...new Set(body.courseGroupIds)];
+  assertInstitutionAccount(auth);
+  assertTeacherCourseCount(auth, courseIds.length);
+  await assertCanAddTeacher(auth);
+  if (process.env.AULANEXO_ADMIN_EMAIL && email === process.env.AULANEXO_ADMIN_EMAIL.toLowerCase()) throw new AppError(409, "EMAIL_RESERVED", "Ese correo no se puede usar para un docente.");
+  const groups = await CourseGroup.countDocuments({ _id: { $in: courseIds.map((id) => objectId(id)) }, institutionId: tenantId(auth), active: true });
+  if (groups !== courseIds.length) throw new AppError(400, "GROUP_SCOPE_INVALID", "Uno o más cursos no existen o no pertenecen a esta institución.");
+  if (await User.exists({ email })) throw new AppError(409, "EMAIL_EXISTS", "Ese correo ya tiene una cuenta. Usa «Invitar docente» para asociarla a la institución.");
+  const user = await User.create({ authId: randomUUID(), displayName: body.name, email, passwordHash: await hashPassword(body.password), active: true });
+  const membership = await Membership.create({ userId: user._id, institutionId: tenantId(auth), role: "DOCENTE", active: true, courseGroupIds: courseIds.map((id) => objectId(id)) });
+  if (!await teacherSlotsWithinLimit(auth)) { await Membership.deleteOne({ _id: membership._id }); await User.deleteOne({ _id: user._id }); throw teacherLimitError(auth); }
+  await audit(auth, "TEACHER_ACCOUNT_CREATED", "Membership", membership._id, undefined, { emailHash: createHash("sha256").update(email).digest("hex"), courses: courseIds.length });
+  res.status(201).json({ item: { membershipId: String(membership._id), name: user.displayName, email, courses: courseIds.length }, message: `Cuenta creada. ${body.name} ya puede entrar con ${email} y la contraseña que definiste.` });
 });
 export const invitationRevoke = run(async (req, res, auth) => { admin(auth); const { id } = idSchema.parse(req.params); const row = await MembershipInvitation.findOne({ _id: objectId(id), institutionId: tenantId(auth), acceptedAt: { $exists: false } }); if (!row) throw new AppError(404, "NOT_FOUND", "No se encontró una invitación pendiente."); row.expiresAt = new Date(0); await row.save(); await audit(auth, "MEMBERSHIP_INVITATION_REVOKED", "MembershipInvitation", row._id, undefined, { role: row.role }); res.json({ ok: true }); });
 export const backupDownload = run(async (_req, res, auth) => {

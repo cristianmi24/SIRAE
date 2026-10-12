@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 import { Building2, CheckCircle2, Eye, EyeOff, GraduationCap, LockKeyhole, Moon, ShieldCheck, Sparkles, Sun, UserRound, UsersRound } from "lucide-react";
 import { ACCOUNT_LIMITS } from "../../../shared/limits";
+import { usePageViews } from "../lib/analytics";
 import { StudentLookup } from "../features/auth/StudentLookup";
 import { StudentSelfReport } from "../features/auth/StudentSelfReport";
 import type { StudentSelfReportDto } from "../services/api";
@@ -32,6 +33,10 @@ const StudentCodesPage = lazyPage(() => import("../pages/StudentCodesPage").then
 const LegalPage = lazyPage(() => import("../pages/LegalPage").then((page) => ({ default: page.LegalPage })));
 const MonitoringPage = lazyPage(() => import("../pages/MonitoringPage").then((page) => ({ default: page.MonitoringPage })));
 const NotFoundPage = lazyPage(() => import("../pages/NotFoundPage").then((page) => ({ default: page.NotFoundPage })));
+const PlatformInstitutionsPage = lazyPage(() => import("../pages/PlatformInstitutionsPage").then((page) => ({ default: page.PlatformInstitutionsPage })));
+const PlatformAdminsPage = lazyPage(() => import("../pages/PlatformAdminsPage").then((page) => ({ default: page.PlatformAdminsPage })));
+const WebAnalyticsPage = lazyPage(() => import("../pages/WebAnalyticsPage").then((page) => ({ default: page.WebAnalyticsPage })));
+const PlatformTeachersPage = lazyPage(() => import("../pages/PlatformTeachersPage").then((page) => ({ default: page.PlatformTeachersPage })));
 const InstitutionPage = lazyPage(() => import("../pages/InstitutionPage").then((page) => ({ default: page.InstitutionPage })));
 const AuditPage = lazyPage(() => import("../pages/AuditPage").then((page) => ({ default: page.AuditPage })));
 
@@ -155,7 +160,7 @@ function AuthenticatedApplication() {
   if (!auth.data?.authenticated || !auth.data.user) return <SignInScreen />;
 
   if (auth.data.user.platformAdmin) {
-    return <AppShell user={auth.data.user}><Suspense fallback={<LoadingState label="Abriendo módulo…" />}><Routes><Route path="/" element={<MonitoringPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></Suspense></AppShell>;
+    return <AppShell user={auth.data.user}><Suspense fallback={<LoadingState label="Abriendo módulo…" />}><Routes><Route path="/" element={<MonitoringPage />} /><Route path="/institutions" element={<PlatformInstitutionsPage />} /><Route path="/admins" element={<PlatformAdminsPage />} /><Route path="/teachers" element={<PlatformTeachersPage />} /><Route path="/analytics/*" element={<WebAnalyticsPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></Suspense></AppShell>;
   }
   return (
     <AppShell user={auth.data.user}>
@@ -188,9 +193,11 @@ function AuthenticatedApplication() {
   );
 }
 
+function PageViewTracker() { usePageViews(); return null; }
+
 export function App() {
   // La página de registro por código es pública: el estudiante no inicia sesión.
-  return <BrowserRouter><Routes>
+  return <BrowserRouter><PageViewTracker /><Routes>
     <Route path="/legal" element={<Suspense fallback={<LoadingState label="Cargando…" />}><LegalPage /></Suspense>} />
     <Route path="/asistencia/:token" element={<Suspense fallback={<LoadingState label="Cargando…" />}><PublicAttendancePage /></Suspense>} />
     <Route path="*" element={<AuthenticatedApplication />} />

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Building2, RefreshCw, UserPlus, UsersRound } from "lucide-react";
 import { api, type InstitutionOverviewDto } from "../services/api";
 import { LoadingState } from "../components/Feedback";
+import { CreateTeacherCard } from "./CreateTeacherCard";
 import { LimitNotice, PlanUsage, RequestError } from "../components/LimitNotice";
 
 // La información se vuelve a consultar sola cada pocos segundos (y al volver a la pestaña),
@@ -29,7 +30,7 @@ export function InstitutionPage() {
   return <section className="page">
     <div className="page-heading">
       <div><h1><Building2 size={24} aria-hidden="true" /> {data.institution.name}</h1><p className="page-subtitle">Docentes asociados a la institución, sus cursos y la asistencia de sus estudiantes.</p></div>
-      <div className="heading-actions"><Link className={`button button-primary ${teachersFull ? "is-disabled" : ""}`} to="/settings#docentes" aria-disabled={teachersFull} onClick={(event) => { if (teachersFull) event.preventDefault(); }}><UserPlus size={17} /> Invitar docente</Link></div>
+      <div className="heading-actions"><Link className={`button button-primary ${teachersFull ? "is-disabled" : ""}`} to="/settings#docentes" aria-disabled={teachersFull} onClick={(event) => { if (teachersFull) event.preventDefault(); }}><UserPlus size={17} /> Invitar docente</Link><a className={`button button-secondary ${teachersFull ? "is-disabled" : ""}`} href="#crear-docente">Crear cuenta de docente</a></div>
     </div>
     <PlanUsage />
     <p className="live-status" aria-live="polite"><span className={`live-dot ${overview.isFetching ? "is-fetching" : ""}`} aria-hidden="true" /> Actualizado a las {time(data.generatedAt)} · se actualiza cada {LIVE_INTERVAL_MS / 1000} s <button type="button" className="link-button" onClick={() => void overview.refetch()} disabled={overview.isFetching}><RefreshCw size={14} /> Actualizar</button></p>
@@ -48,6 +49,8 @@ export function InstitutionPage() {
           </button></li>;
         })}{!teacher.courses.length && <li className="helper-text">Sin cursos asignados.</li>}</ul>
       </article>)}</div>}
+
+    <CreateTeacherCard maxCourses={data.plan.limits.coursesPerTeacher ?? 6} disabled={teachersFull} />
 
     {selection && selectedTeacher && selectedCourse && <CourseStudents key={`${selection.membershipId}:${selection.courseId}`} selection={selection} teacherName={selectedTeacher.name} courseLabel={selectedCourse.label} />}
 

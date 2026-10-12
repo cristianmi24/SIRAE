@@ -2,7 +2,8 @@ import express, { type Express } from "express";
 import { ensureDeviceId, publicLinkInfo, publicRegister } from "./services/attendance-link.js";
 import { studentSelfReport } from "./services/student-self.js";
 import { renderStudentSelfPdf } from "./utils/report-pdfs.js";
-import { blockPlatformAdminWrites, platformOverview, requirePlatformAdmin } from "./services/platform.js";
+import { analyticsRealtime, analyticsSummary } from "./services/google-analytics.js";
+import { blockPlatformAdminWrites, createPlatformInstitution, platformAdmins, platformInstitutionInput, platformInstitutionPatch, platformOverview, requirePlatformAdmin, updatePlatformInstitution } from "./services/platform.js";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -74,6 +75,11 @@ export function createApp(): Express {
   app.use("/api/development", requireAuthenticatedContext, blockPlatformAdminWrites, developmentRouter);
   app.use("/api/learning", requireAuthenticatedContext, blockPlatformAdminWrites, learningRouter);
   app.get("/api/platform/overview", requireAuthenticatedContext, requirePlatformAdmin, async (request, response, next) => { try { response.json(await platformOverview(request.auth!)); } catch (error) { next(error); } });
+  app.get("/api/platform/analytics", requireAuthenticatedContext, requirePlatformAdmin, async (request, response, next) => { try { const days = [7, 28, 90].includes(Number(request.query.days)) ? Number(request.query.days) : 28; response.setHeader("Cache-Control", "private, no-store"); response.json(await analyticsSummary(days)); } catch (error) { next(error); } });
+  app.get("/api/platform/analytics/realtime", requireAuthenticatedContext, requirePlatformAdmin, async (_request, response, next) => { try { response.setHeader("Cache-Control", "private, no-store"); response.json(await analyticsRealtime()); } catch (error) { next(error); } });
+  app.get("/api/platform/admins", requireAuthenticatedContext, requirePlatformAdmin, async (_request, response, next) => { try { response.setHeader("Cache-Control", "private, no-store"); response.json(await platformAdmins()); } catch (error) { next(error); } });
+  app.post("/api/platform/institutions", requireAuthenticatedContext, requirePlatformAdmin, async (request, response, next) => { try { response.status(201).json({ item: await createPlatformInstitution(request.auth!, platformInstitutionInput.parse(request.body)) }); } catch (error) { next(error); } });
+  app.patch("/api/platform/institutions/:id", requireAuthenticatedContext, requirePlatformAdmin, async (request, response, next) => { try { response.json({ item: await updatePlatformInstitution(String(request.params.id), platformInstitutionPatch.parse(request.body)) }); } catch (error) { next(error); } });
   app.use("/api", notFoundHandler);
 
   return app;
