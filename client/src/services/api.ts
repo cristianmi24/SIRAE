@@ -41,6 +41,7 @@ export interface ScheduleBreakDto { id: string; courseGroupId?: string; label: s
 export interface AnalyticsNamed { name: string; value: number }
 export interface AnalyticsSummaryDto { configured: boolean; days: number; totals?: { users: number; newUsers: number; sessions: number; pageViews: number; avgSessionSeconds: number; engagementRate: number; bounceRate: number; events: number; viewsPerSession: number }; daily?: { date: string; users: number; sessions: number; pageViews: number }[]; hourly?: { hour: number; users: number }[]; pages?: { path: string; views: number; users: number }[]; channels?: AnalyticsNamed[]; countries?: AnalyticsNamed[]; cities?: AnalyticsNamed[]; devices?: AnalyticsNamed[]; browsers?: AnalyticsNamed[]; systems?: AnalyticsNamed[]; visitorTypes?: AnalyticsNamed[] }
 export interface AnalyticsRealtimeDto { configured: boolean; users: number; viewsLast30: number; minutes?: { minutesAgo: number; users: number }[]; pages?: { name: string; users: number }[]; countries?: AnalyticsNamed[]; cities?: AnalyticsNamed[]; devices?: AnalyticsNamed[] }
+export interface PlatformAdminsDto { admins: { id: string; name: string; email: string; active: boolean; institutionId: string; institutionName: string; institutionType: "PERSONAL" | "INSTITUTION"; institutionActive: boolean; createdAt?: string; lastSeenAt?: string }[]; pending: { id: string; email: string; institutionName: string; expiresAt: string }[] }
 export interface PlatformLimitsInput { courses?: number | null; teachers?: number | null; coursesPerTeacher?: number | null }
 export interface PlatformOverviewDto {
   totals: { institutions: number; personalClassrooms: number; teachers: number; activeTeachers7d: number; activeTeachers30d: number; students: number; courses: number; sessions: number; grades: number; observations: number };
@@ -98,6 +99,7 @@ export const api = {
   getMe: () => request<AuthState>("/api/auth/me"),
   getPlatformOverview: () => request<PlatformOverviewDto>("/api/platform/overview"),
   getPlatformAnalytics: (days: number) => request<AnalyticsSummaryDto>(`/api/platform/analytics?days=${days}`),
+  getPlatformAdmins: () => request<PlatformAdminsDto>("/api/platform/admins"),
   getPlatformRealtime: () => request<AnalyticsRealtimeDto>("/api/platform/analytics/realtime"),
   createPlatformInstitution: (input: { name: string; type: "INSTITUTION" | "PERSONAL"; adminEmail?: string; limits?: PlatformLimitsInput }) => request<{ item: { id: string; name: string; adminStatus: "NONE" | "ASSIGNED" | "INVITED" } }>("/api/platform/institutions", json("POST", input)),
   updatePlatformInstitution: (id: string, input: { name?: string; active?: boolean; limits?: PlatformLimitsInput }) => request<{ item: { id: string } }>(`/api/platform/institutions/${id}`, json("PATCH", input)),

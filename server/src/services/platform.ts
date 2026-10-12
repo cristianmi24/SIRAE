@@ -147,3 +147,23 @@ export async function updatePlatformInstitution(id: string, input: z.infer<typeo
   await Institution.updateOne({ _id: institution._id }, { ...(Object.keys(set).length ? { $set: set } : {}), ...(Object.keys(unset).length ? { $unset: unset } : {}) });
   return { id };
 }
+
+// Administradores de cada institución o aula (rol ADMIN), más las invitaciones de administrador pendientes.
+export async function platformAdmins() {
+  const [memberships, invitations] = await Promise.all([
+    Membership.find({ role: "ADMIN", active: true }).populate("userId", "displayName email active lastSeenAt lastLoginAt createdAt").populate("institutionId", "name type active").lean(),
+    MembershipInvitation.find({ role: "ADMIN", acceptedAt: { $exists: false }, expiresAt: { $gt: new Date() } }).populate("institutionId", "name type active").lean(),
+  ]);
+  type U = { _id: Types.ObjectId; displayName: string; email: string; active: boolean; lastSeenAt?: Date; lastLoginAt?: Date; createdAt?: Date } | null;
+  type I = { _id: Types.ObjectId; name: string; type: "PERSONAL" | "INSTITUTION"; active: boolean } | null;
+  const admins = memberships.map((row) => ({ user: row.userId as unknown as U, institution: row.institutionId as unknown as I }))
+    .filter((row): row is { user: NonNullable<U>; institution: NonNullable<I> } => Boolean(row.user && row.institution) && !isPlatformAdminEmail(row.user!.email))
+    .map(({ user, institution }) => ({
+      id: String(user._id), name: user.displayName, email: user.email, active: user.active,
+      institutionId: String(institution._id), institutionName: institution.name, institutionType: institution.type, institutionActive: institution.active,
+      createdAt: user.createdAt?.toISOString(), lastSeenAt: (user.lastSeenAt ?? user.lastLoginAt)?.toISOString(),
+    }))
+    .sort((a, b) => (b.lastSeenAt ?? "").localeCompare(a.lastSeenAt ?? ""));
+  const pending = invitations.map((row) => ({ id: String(row._id), email: row.email, institutionName: (row.institutionId as unknown as I)?.name ?? "—", expiresAt: row.expiresAt.toISOString() }));
+  return { admins, pending };
+}
