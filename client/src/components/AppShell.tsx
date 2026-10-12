@@ -9,7 +9,7 @@ import { CommandPalette, ShortcutsHelp } from "./CommandPalette";
 import { StatusChip } from "./Feedback";
 import { Byline } from "./Byline";
 import { TopProgress } from "./Loading";
-import { adminItemsFor, breadcrumbsFor, home, monitoring, navItemsFor, sections, type NavItem } from "./navigation";
+import { adminItemsFor, breadcrumbsFor, home, monitoring, navItemsFor, platformInstitutions, sections, type NavItem } from "./navigation";
 
 function NavItemLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {
   const Icon = item.icon;
@@ -21,7 +21,7 @@ function NavItemLink({ item, onClick }: { item: NavItem; onClick?: () => void })
 }
 
 function NavContent({ platformAdmin, adminNav, onNavigate }: { platformAdmin: boolean; adminNav: NavItem[]; onNavigate?: () => void }) {
-  if (platformAdmin) return <nav className="nav-list" aria-label="Módulos"><NavItemLink item={monitoring} onClick={onNavigate} /></nav>;
+  if (platformAdmin) return <nav className="nav-list" aria-label="Módulos"><NavItemLink item={monitoring} onClick={onNavigate} /><NavItemLink item={platformInstitutions} onClick={onNavigate} /></nav>;
   return <nav className="nav-list" aria-label="Módulos">
     <NavItemLink item={home} onClick={onNavigate} />
     {sections.map((section) => <div className="nav-section" key={section.title}><p className="nav-section-title">{section.title}</p>{section.items.map((item) => <NavItemLink key={item.to} item={item} onClick={onNavigate} />)}</div>)}
@@ -121,7 +121,7 @@ export function AppShell({ user, children }: { user: AuthUserDto; children: Reac
     </main>
 
     <nav className="mobile-bottom-nav" aria-label="Navegación móvil">
-      {(platformAdmin ? [monitoring] : [home, ...sections[0]!.items.slice(0, 1), ...sections[1]!.items.slice(0, 1), sections[0]!.items[1]!]).map((item) => { const Icon = item.icon; return <NavLink key={item.to} to={item.to} end className={({ isActive }) => `mobile-nav-link ${isActive ? "is-active" : ""}`}><Icon size={21} aria-hidden="true" /><span>{item.label.split(" ")[0]}</span></NavLink>; })}
+      {(platformAdmin ? [monitoring, platformInstitutions] : [home, ...sections[0]!.items.slice(0, 1), ...sections[1]!.items.slice(0, 1), sections[0]!.items[1]!]).map((item) => { const Icon = item.icon; return <NavLink key={item.to} to={item.to} end className={({ isActive }) => `mobile-nav-link ${isActive ? "is-active" : ""}`}><Icon size={21} aria-hidden="true" /><span>{item.label.split(" ")[0]}</span></NavLink>; })}
       <button type="button" className="mobile-nav-link" onClick={() => setDrawerOpen(true)} aria-label="Abrir menú completo"><Menu size={21} aria-hidden="true" /><span>Menú</span></button>
     </nav>
 
