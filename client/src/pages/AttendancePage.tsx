@@ -8,6 +8,7 @@ import { RosterList } from "../features/attendance/RosterList";
 import { listQueuedAttendance, queueAttendance, removeQueuedAttendance, type PendingAttendance } from "../lib/offline-attendance";
 import { LoadingState } from "../components/Feedback";
 import { CameraIdle, QrCameraView } from "../components/QrCameraView";
+import { ScanFeedback, type ScanFlash } from "../features/attendance/ScanFeedback";
 import { useQrScanner } from "../lib/use-qr-scanner";
 
 const prefix = "aulanexo:student:v1:";
@@ -29,6 +30,9 @@ export function AttendancePage() {
   const [mode, setMode] = useState<"code" | "qr">("code");
   const [timingIssue, setTimingIssue] = useState<TimingIssue | null>(null); const [todayTolerance, setTodayTolerance] = useState(""); const [editingTolerance, setEditingTolerance] = useState(false);
   const lastScannedRef = useRef("");
+  const [flash, setFlash] = useState<ScanFlash | null>(null);
+  const showFlash = useCallback((value: Omit<ScanFlash, "id">) => setFlash({ ...value, id: Date.now() }), []);
+  const hideFlash = useCallback(() => setFlash(null), []);
   useEffect(() => { if (!date && context.data?.timezone) setDate(dayKeyInZone(context.data.timezone)); }, [date, context.data?.timezone]);
   const sessions = useQuery({ queryKey: ["sessions", date], queryFn: () => api.getSessions(date), enabled: Boolean(date) });
   const roster = useQuery({ queryKey: ["roster", sessionId], queryFn: () => api.getRoster(sessionId), enabled: Boolean(sessionId), refetchInterval: 6000 });
@@ -55,24 +59,30 @@ export function AttendancePage() {
     if (!sessionId || !selectedSession || payload === lastScannedRef.current) return;
     lastScannedRef.current = payload;
     try {
-      if (!payload.startsWith(prefix) || payload.length > 160) { setMessage({ tone: "error", text: "Este QR no es un código de estudiante de SIRAE." }); return; }
+      if (!payload.startsWith(prefix) || payload.length > 160) { setMessage({ tone: "error", text: "Este QR no es un código de estudiante de SIRAE." }); showFlash({ kind: "error", title: "QR no válido", detail: "No es un código de estudiante de SIRAE." }); return; }
       const tokenHash = await hashPayload(payload); const clientEventId = crypto.randomUUID(); const scannedAt = new Date().toISOString();
       const scope = context.data?.queueScope;
       if (!scope) { setMessage({ tone: "error", text: "No se pudo guardar el escaneo local." }); return; }
-      const queueIt = async (text: string) => { await queueAttendance({ scope, clientEventId, sessionId, tokenHash, deviceScannedAt: scannedAt, queuedAt: new Date().toISOString() }); setMessage({ tone: "info", text }); setLastScan({ name: "Escaneo guardado sin conexión", label: "Por revisar", at: scannedAt }); await reloadQueue(); };
+      const queueIt = async (text: string) => { await queueAttendance({ scope, clientEventId, sessionId, tokenHash, deviceScannedAt: scannedAt, queuedAt: new Date().toISOString() }); setMessage({ tone: "info", text }); setLastScan({ name: "Escaneo guardado sin conexión", label: "Por revisar", at: scannedAt }); showFlash({ kind: "offline", title: "Guardado sin conexión", detail: "Se enviará al volver la red." }); await reloadQueue(); };
       if (!navigator.onLine) { await queueIt("Sin conexión: el escaneo se guardó en este dispositivo y se enviará al volver la red."); return; }
       try {
         const result = await api.scanQr(sessionId, { tokenHash, clientEventId });
         setMessage(null);
         setLastScan({ name: result.item.studentName ?? "Estudiante", label: result.duplicate ? `Ya registrado (${result.item.label ?? ""})` : result.item.label ?? "Registrado", status: result.item.status, at: result.item.recordedAt ?? scannedAt });
+        const name = result.item.studentName ?? "Estudiante";
+        const at = clock(result.item.recordedAt ?? scannedAt);
+        if (result.duplicate) showFlash({ kind: "duplicate", title: name, detail: `Ya estaba registrado${result.item.label ? ` · ${result.item.label}` : ""}`, time: at });
+        else showFlash({ kind: result.item.status === "LATE" ? "late" : result.item.status === "PENDING_REVIEW" ? "duplicate" : "ok", title: name, detail: result.item.label ?? "Registrado", time: at });
         await client.invalidateQueries({ queryKey: ["roster", sessionId] });
       } catch (error) {
         if (error instanceof TypeError || !navigator.onLine) await queueIt("No hubo conexión con el servidor; el escaneo se guardó y se reintentará.");
-        else fail("No fue posible registrar el QR.")(error);
+        else { fail("No fue posible registrar el QR.")(error); showFlash({ kind: "error", title: "No se registró", detail: error instanceof Error ? error.message : undefined }); }
       }
     } catch (error) { fail("No se pudo procesar el QR.")(error); }
-    finally { window.setTimeout(() => { if (lastScannedRef.current === payload) lastScannedRef.current = ""; }, 1400); }
-  }, [sessionId, selectedSession, client, context.data?.queueScope, reloadQueue]);
+    // El mismo QR se ignora unos segundos: si el estudiante lo deja frente a la cámara, la confirmación
+    // verde no se reemplaza enseguida por «ya registrado». Otros estudiantes se leen sin espera.
+    finally { window.setTimeout(() => { if (lastScannedRef.current === payload) lastScannedRef.current = ""; }, 6000); }
+  }, [sessionId, selectedSession, client, context.data?.queueScope, reloadQueue, showFlash, clock]);
   // La cámara solo se enciende al pulsar "Activar cámara" y se apaga al detenerla, al salir,
   // al ocultar la pestaña o tras 60 s sin leer códigos.
   const scanner = useQrScanner((text) => { void handleQr(text); });
@@ -146,6 +156,7 @@ export function AttendancePage() {
         {selectedSession.state === "CLOSED" && mode === "qr" && <p className="notice notice-info">La clase está cerrada: los QR que escanees ahora quedan como <strong>Tarde</strong>. Si necesitas volver a tomar asistencia, usa <strong>Reabrir clase</strong>.</p>}
         {mode === "code" ? <CodeLinkPanel sessionId={selectedSession.id} open={selectedSession.state === "OPEN"} clock={clock} onMessage={setMessage} /> : <>
         <QrCameraView scanner={scanner} title={`Asistencia · Curso ${groupLabel(selectedSession.courseGroupId)}`} idle={<CameraIdle />}>
+          <ScanFeedback flash={flash} onDone={hideFlash} />
           {message?.tone === "error" && <p className="notice notice-error" role="alert">{message.text}</p>}
           {lastScan && <div className={`last-scan status-${(lastScan.status ?? "pending").toLowerCase()}`} aria-live="polite"><strong>{lastScan.name}</strong><span>{lastScan.label}</span><time>{clock(lastScan.at, true)}</time></div>}
         </QrCameraView>

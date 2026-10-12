@@ -42,3 +42,13 @@ export const CourseGroup: Model<CourseGroupRecord> = (mongoose.models.CourseGrou
 export const Enrollment: Model<EnrollmentRecord> = (mongoose.models.Enrollment as Model<EnrollmentRecord> | undefined) ?? model<EnrollmentRecord>("Enrollment", enrollmentSchema);
 export const Student: Model<StudentRecord> = (mongoose.models.Student as Model<StudentRecord> | undefined) ?? model<StudentRecord>("Student", studentSchema);
 export const AuditLog: Model<AuditLogRecord> = (mongoose.models.AuditLog as Model<AuditLogRecord> | undefined) ?? model<AuditLogRecord>("AuditLog", auditLogSchema);
+
+// Quejas, reclamos y solicitudes (incluida la eliminación de datos según la Ley 1581 de 2012).
+// Las envía cualquier persona desde el formulario público y las atiende el administrador de la plataforma.
+export const complaintTypes = ["QUEJA", "RECLAMO", "ELIMINACION_DATOS", "PETICION", "OTRO"] as const;
+export const complaintRoles = ["PADRE_ACUDIENTE", "ESTUDIANTE", "DOCENTE", "INSTITUCION", "OTRO"] as const;
+export const complaintStatuses = ["NUEVA", "EN_REVISION", "RESUELTA"] as const;
+export interface ComplaintRecord { ticket: string; type: (typeof complaintTypes)[number]; requesterRole: (typeof complaintRoles)[number]; name: string; email: string; phone?: string; institutionName?: string; studentName?: string; message: string; status: (typeof complaintStatuses)[number]; adminNote?: string; resolvedAt?: Date; createdAt?: Date; updatedAt?: Date }
+const complaintSchema = new Schema<ComplaintRecord>({ ticket: { type: String, required: true, unique: true, maxlength: 20 }, type: { type: String, enum: complaintTypes, required: true }, requesterRole: { type: String, enum: complaintRoles, required: true }, name: { type: String, required: true, trim: true, maxlength: 120 }, email: { type: String, required: true, trim: true, lowercase: true, maxlength: 254 }, phone: { type: String, trim: true, maxlength: 32 }, institutionName: { type: String, trim: true, maxlength: 160 }, studentName: { type: String, trim: true, maxlength: 160 }, message: { type: String, required: true, trim: true, maxlength: 4000 }, status: { type: String, enum: complaintStatuses, required: true, default: "NUEVA", index: true }, adminNote: { type: String, trim: true, maxlength: 2000 }, resolvedAt: { type: Date } }, schemaOptions);
+complaintSchema.index({ status: 1, createdAt: -1 });
+export const Complaint: Model<ComplaintRecord> = (mongoose.models.Complaint as Model<ComplaintRecord> | undefined) ?? model<ComplaintRecord>("Complaint", complaintSchema);

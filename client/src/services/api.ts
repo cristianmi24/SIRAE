@@ -78,6 +78,11 @@ export interface InstitutionCourseStudentsDto {
   students: { id: string; name: string; code: string; present: number; late: number; absent: number; justified: number; pending: number; attendancePercent?: number; lastStatus?: RosterLine["status"]; lastRecordedAt?: string }[];
   generatedAt: string;
 }
+export type ComplaintType = "QUEJA" | "RECLAMO" | "ELIMINACION_DATOS" | "PETICION" | "OTRO";
+export type ComplaintRole = "PADRE_ACUDIENTE" | "ESTUDIANTE" | "DOCENTE" | "INSTITUCION" | "OTRO";
+export type ComplaintStatus = "NUEVA" | "EN_REVISION" | "RESUELTA";
+export interface ComplaintInput { type: ComplaintType; requesterRole: ComplaintRole; name: string; email: string; phone?: string; institutionName?: string; studentName?: string; message: string; consent: true; website?: string }
+export interface ComplaintDto { id: string; ticket: string; type: ComplaintType; requesterRole: ComplaintRole; name: string; email: string; phone?: string; institutionName?: string; studentName?: string; message: string; status: ComplaintStatus; adminNote?: string; resolvedAt?: string; createdAt?: string; updatedAt?: string }
 export interface ObservationDto { id: string; studentId: string; studentName?: string; type: string; description: string; priority: "LOW" | "NORMAL" | "HIGH"; followUp?: string; status: "OPEN" | "IN_PROGRESS" | "CLOSED"; observedAt: string }
 async function getAllStudents(status: "ACTIVO" | "TODOS" = "ACTIVO"): Promise<PaginatedResult<StudentDto>> {
   const items: StudentDto[] = [];
@@ -96,6 +101,9 @@ export const api = {
   downloadCourseGradesPdf: (courseId: string, periodId?: string) => download(`/api/learning/reports/courses/${courseId}/grades.pdf${periodId ? `?periodId=${periodId}` : ""}`),
   downloadStudentCodesPdf: (courseId?: string) => download(`/api/students/codes.pdf${courseId ? `?curso=${courseId}` : ""}`),
   getStudentSelfReport: (input: { code?: string; tokenHash?: string }) => request<StudentSelfReportDto>("/api/public/student-report", json("POST", input)),
+  sendComplaint: (input: ComplaintInput) => request<{ ticket: string; createdAt?: string }>("/api/public/complaints", json("POST", input)),
+  getComplaints: () => request<{ items: ComplaintDto[]; counts: Record<ComplaintStatus, number> }>("/api/platform/complaints"),
+  updateComplaint: (id: string, input: { status: ComplaintStatus; adminNote?: string }) => request<{ item: ComplaintDto }>(`/api/platform/complaints/${encodeURIComponent(id)}`, json("PATCH", input)),
   getMe: () => request<AuthState>("/api/auth/me"),
   getPlatformOverview: () => request<PlatformOverviewDto>("/api/platform/overview"),
   getPlatformAnalytics: (days: number) => request<AnalyticsSummaryDto>(`/api/platform/analytics?days=${days}`),
