@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { ErrorPanel, LoadingState } from "../components/Feedback";
+import { WebAnalyticsPanel } from "./WebAnalyticsPanel";
 import { api, type PlatformOverviewDto } from "../services/api";
 
 const dateFormat = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" });
@@ -39,6 +40,8 @@ export function MonitoringPage() {
       <Metric tone="amber" label="Estudiantes" value={t.students} hint={`${t.courses} cursos creados`} />
     </section>
     <div className="usage-strip"><span><strong>{t.sessions}</strong> clases con asistencia</span><span><strong>{t.grades}</strong> notas registradas</span><span><strong>{t.observations}</strong> observaciones</span></div>
+
+    <WebAnalyticsPanel />
 
     <article className="content-card">
       <div className="card-title-row">
