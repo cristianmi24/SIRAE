@@ -24,7 +24,7 @@ export function CodeLinkPanel({ sessionId, open, clock, onMessage }: { sessionId
   const item = link.data?.item;
   const url = item?.token ? `${window.location.origin}/asistencia/${item.token}` : "";
   const countdown = useCountdown(item?.state === "ACTIVE" ? item.expiresAt : undefined);
-  useEffect(() => { if (url) void QRCode.toDataURL(url, { margin: 1, width: 240 }).then(setQr).catch(() => setQr("")); else setQr(""); }, [url]);
+  useEffect(() => { if (url) void QRCode.toDataURL(url, { errorCorrectionLevel: "M", margin: 4, width: 768 }).then(setQr).catch(() => setQr("")); else setQr(""); }, [url]);
   useEffect(() => { if (item?.sessionState === "CLOSED") void client.invalidateQueries({ queryKey: ["sessions"] }); }, [item?.sessionState, client]);
   const refresh = async () => { await client.invalidateQueries({ queryKey: ["attendanceLink", sessionId] }); await client.invalidateQueries({ queryKey: ["roster", sessionId] }); };
   const fail = (fallback: string) => (error: unknown) => onMessage({ tone: "error", text: error instanceof Error ? error.message : fallback });

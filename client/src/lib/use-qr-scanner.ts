@@ -3,10 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const IDLE_LIMIT_MS = 60_000;
 const SCAN_INTERVAL_MS = 120;
 
-// Cámara trasera (en el celular) o la cámara disponible (en el computador), en alta resolución:
-// los QR impresos se leen mucho mejor y la vista se puede ampliar a toda la pantalla.
-const RESOLUTION: MediaTrackConstraints = { width: { ideal: 1920 }, height: { ideal: 1080 } };
-const VIDEO_CONSTRAINTS: MediaTrackConstraints = { facingMode: { ideal: "environment" }, ...RESOLUTION };
+// Conserva una resolución alta y una proporción acorde con la orientación del visor.
+function resolutionConstraints(): MediaTrackConstraints {
+  return window.innerHeight > window.innerWidth
+    ? { width: { ideal: 1080 }, height: { ideal: 1920 }, aspectRatio: { ideal: 9 / 16 } }
+    : { width: { ideal: 1920 }, height: { ideal: 1080 }, aspectRatio: { ideal: 16 / 9 } };
+}
 
 function cameraErrorMessage(reason: unknown): string {
   const name = reason instanceof DOMException || reason instanceof Error ? reason.name : "";
@@ -23,7 +25,8 @@ async function listCameras(): Promise<MediaDeviceInfo[]> {
 // Pide la cámara; si el dispositivo no admite las preferencias (resolución o cámara trasera),
 // reintenta con cualquier cámara disponible.
 async function openCamera(deviceId?: string): Promise<MediaStream> {
-  const preferred: MediaTrackConstraints = deviceId ? { deviceId: { exact: deviceId }, ...RESOLUTION } : VIDEO_CONSTRAINTS;
+  const resolution = resolutionConstraints();
+  const preferred: MediaTrackConstraints = deviceId ? { deviceId: { exact: deviceId }, ...resolution } : { facingMode: { ideal: "environment" }, ...resolution };
   try { return await navigator.mediaDevices.getUserMedia({ video: preferred, audio: false }); }
   catch (reason) {
     const name = reason instanceof DOMException || reason instanceof Error ? reason.name : "";
@@ -98,6 +101,11 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
     const devices = await navigator.mediaDevices.enumerateDevices?.().catch(() => [] as MediaDeviceInfo[]) ?? [];
     if (devices.length > 0 && !devices.some((device) => device.kind === "videoinput")) { setError("No se encontró una cámara en este dispositivo. Puedes registrar la asistencia por código o a mano."); return; }
     try {
+      // Descarga ZXing mientras el navegador solicita/abre la cámara, para no retrasar el primer QR.
+      const backendPromise = nativeDetector().then(async (detector) => detector ? { detector } : {
+        modules: await Promise.all([import("@zxing/browser"), import("@zxing/library")]),
+      });
+      void backendPromise.catch(() => undefined);
       const stream = await openCamera(typeof deviceId === "string" ? deviceId : undefined);
       if (streamRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       streamRef.current = stream;
@@ -113,8 +121,9 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
       // Con el permiso concedido ya se conocen todas las cámaras (para poder cambiar entre ellas).
       void listCameras().then(setCameras);
 
-      const detector = await nativeDetector();
-      if (detector) {
+      const backend = await backendPromise;
+      if ("detector" in backend && backend.detector) {
+        const detector = backend.detector;
         let running = true;
         let timer: number | undefined;
         const tick = async () => {
@@ -128,7 +137,7 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
         void tick();
         return;
       }
-      const [{ BrowserQRCodeReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([import("@zxing/browser"), import("@zxing/library")]);
+      const [{ BrowserQRCodeReader }, { BarcodeFormat, DecodeHintType }] = backend.modules;
       const hints = new Map<unknown, unknown>([[DecodeHintType.TRY_HARDER, true], [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE]]]);
       const reader = new BrowserQRCodeReader(hints as never, { delayBetweenScanAttempts: SCAN_INTERVAL_MS, delayBetweenScanSuccess: 600 });
       const controls = await reader.decodeFromStream(stream, video, (result) => { if (result) handle(result.getText()); });

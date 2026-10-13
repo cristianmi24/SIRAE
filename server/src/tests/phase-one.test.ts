@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createOpaqueQrToken, createQrPayload, hashQrPayload } from "../utils/qr.js";
+import { createOpaqueQrToken, createQrDataUrl, createQrPayload, hashQrPayload } from "../utils/qr.js";
 import { normalizeForLookup } from "../utils/text.js";
 import { studentInputSchema, studentUpdateSchema } from "../validators/students.js";
 
@@ -13,6 +13,18 @@ describe("seguridad QR de SIRAE", () => {
     expect(payload).not.toContain("Ana Gómez");
     expect(hashQrPayload(payload)).toHaveLength(64);
     expect(hashQrPayload(payload)).toBe(hashQrPayload(payload));
+  });
+
+  it("genera un QR PNG de alta resolución para impresión y permite una variante compacta", async () => {
+    const payload = createQrPayload(createOpaqueQrToken());
+    const readDimensions = (dataUrl: string) => {
+      expect(dataUrl).toMatch(/^data:image\/png;base64,/);
+      const png = Buffer.from(dataUrl.slice(dataUrl.indexOf(",") + 1), "base64");
+      return [png.readUInt32BE(16), png.readUInt32BE(20)];
+    };
+
+    expect(readDimensions(await createQrDataUrl(payload))).toEqual([1024, 1024]);
+    expect(readDimensions(await createQrDataUrl(payload, 640))).toEqual([640, 640]);
   });
 });
 

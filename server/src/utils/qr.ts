@@ -15,11 +15,11 @@ export function hashQrPayload(payload: string): string {
   return createHash("sha256").update(payload).digest("hex");
 }
 
-export async function createQrDataUrl(payload: string): Promise<string> {
+export async function createQrDataUrl(payload: string, width = 1024): Promise<string> {
   return QRCode.toDataURL(payload, {
     errorCorrectionLevel: "M",
-    margin: 2,
-    width: 640,
+    margin: 4,
+    width,
     color: {
       dark: "#173F5F",
       light: "#FFFFFF",

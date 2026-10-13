@@ -741,7 +741,7 @@ kbd { display: inline-flex; align-items: center; min-width: 1.6em; justify-conte
 .code-countdown { font-size: 1.6rem; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--ink); }
 .code-link-body { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1rem; align-items: start; }
 .code-link-body > div { display: grid; gap: .6rem; justify-items: start; }
-.code-link-qr { width: 150px; height: 150px; border-radius: 10px; border: 1px solid var(--line); background: #fff; padding: 4px; }
+.code-link-qr { width: 192px; height: 192px; border-radius: 10px; border: 1px solid var(--line); background: #fff; padding: 4px; }
 .code-link-url { display: flex; align-items: center; gap: .4rem; width: 100%; padding: .2rem .3rem .2rem .7rem; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--muted); }
 .code-link-url input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-size: .84rem; }
 .code-alerts { list-style: none; margin: 0; padding: .7rem; border-radius: 10px; background: var(--amber-bg); display: grid; gap: .3rem; font-size: .84rem; color: var(--ink); }
@@ -1010,24 +1010,21 @@ kbd { display: inline-flex; align-items: center; min-width: 1.6em; justify-conte
 
 /* ───────── Lector QR ampliado ───────── */
 .camera-frame { position: relative; }
-.camera-frame.is-expanded { position: fixed; inset: 0; z-index: 90; margin: 0; aspect-ratio: auto; width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; background: #000; }
-.camera-frame.is-expanded video { width: 100%; height: 100%; object-fit: cover; }
-.camera-overlay { position: absolute; inset: 0; display: grid; grid-template-rows: auto 1fr auto; pointer-events: none; color: #fff; }
+.camera-frame.is-expanded { position: fixed; inset: 0; z-index: 90; margin: 0; aspect-ratio: auto; width: auto; height: 100vh; height: 100dvh; border-radius: 0; overflow: hidden; background: #000; }
+.camera-frame.is-expanded video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.camera-overlay { position: absolute; inset: 0; z-index: 1; display: grid; grid-template-rows: auto 1fr auto; pointer-events: none; color: #fff; }
 .camera-overlay > * { pointer-events: auto; }
-.camera-topbar { display: flex; align-items: center; gap: .6rem; padding: max(.75rem, env(safe-area-inset-top)) 1rem .75rem; background: linear-gradient(rgba(0, 0, 0, .65), transparent); font-weight: 800; }
+.camera-topbar { display: flex; align-items: center; gap: .6rem; padding: max(.75rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) .75rem max(1rem, env(safe-area-inset-left)); background: linear-gradient(rgba(0, 0, 0, .65), transparent); font-weight: 800; }
 .camera-topbar .camera-dot { flex: 0 0 auto; }
 .camera-topbar > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .camera-icon-button { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .18); color: #fff; cursor: pointer; }
 .camera-icon-button:hover, .camera-icon-button:focus-visible { background: rgba(255, 255, 255, .32); }
 .camera-guide { align-self: center; justify-self: center; width: min(72vw, 62vh, 420px); aspect-ratio: 1; border-radius: 22px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .28); outline: 3px solid rgba(255, 255, 255, .9); pointer-events: none; }
-.camera-bottombar { display: grid; gap: .6rem; padding: .75rem 1rem max(1rem, env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
+.camera-bottombar { display: grid; gap: .6rem; padding: .75rem max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
 .camera-bottombar .last-scan { margin: 0; color: var(--ink); }
 .camera-hint { margin: 0; text-align: center; font-size: .9rem; color: rgba(255, 255, 255, .9); }
 .camera-bottombar .dialog-actions { justify-content: center; margin: 0; }
 body.camera-open { overflow: hidden; }
-@media (min-width: 900px) {
-  .camera-frame.is-expanded video { object-fit: contain; }
-}
 
 /* ───────── Portada en celular: solo el logo y un encabezado compacto ───────── */
 .access-card { scroll-margin-top: 1rem; }

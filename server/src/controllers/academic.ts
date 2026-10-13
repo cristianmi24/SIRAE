@@ -124,6 +124,8 @@ export async function exportStudentQrsController(request: Request, response: Res
         response.status(404).json({ error: { code: "NO_STUDENTS", message: "No hay estudiantes activos para exportar." } });
         return;
       }
+      const isZip = request.query.format === "zip";
+      const qrWidth = isZip ? 640 : 1024;
       const files: { name: string; studentName: string; document: string; image: Buffer }[] = [];
       for (const student of students) {
         const token = createOpaqueQrToken();
@@ -134,7 +136,7 @@ export async function exportStudentQrsController(request: Request, response: Res
           name: `QR-${student.firstName}-${student.lastName}-${student.document}`.replace(/[^a-zA-Z0-9_-]+/g, "-"),
           studentName: `${student.firstName} ${student.lastName}`,
           document: student.document,
-          image: dataUrlBuffer(await createQrDataUrl(createQrPayload(token))),
+          image: dataUrlBuffer(await createQrDataUrl(createQrPayload(token), qrWidth)),
         });
       }
       await AuditLog.create({
@@ -145,7 +147,7 @@ export async function exportStudentQrsController(request: Request, response: Res
         entityId: students[0]._id,
         metadata: { count: files.length, format: request.query.format === "zip" ? "zip" : "pdf" },
       });
-      if (request.query.format === "zip") {
+      if (isZip) {
         response.setHeader("Content-Type", "application/zip");
         response.setHeader("Content-Disposition", 'attachment; filename="aulanexo-codigos-qr.zip"');
         response.setHeader("Cache-Control", "private, no-store");
@@ -169,7 +171,7 @@ export async function exportStudentQrsController(request: Request, response: Res
         const y = 60 + Math.floor(position / 2) * 340;
         document.fontSize(14).fillColor("#173F5F").text(file.studentName, x, y, { width: 230, align: "center" });
         document.fontSize(9).fillColor("#526174").text(`Código: ${file.document}`, x, y + 22, { width: 230, align: "center" });
-        document.image(file.image, x + 35, y + 48, { fit: [160, 160], align: "center" });
+        document.image(file.image, x + 25, y + 48, { fit: [180, 180], align: "center" });
       });
       document.end();
     } catch (error) {
