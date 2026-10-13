@@ -1116,3 +1116,40 @@ body.camera-open { overflow: hidden; }
 .subject-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .7rem; border-radius: 999px; background: var(--teal-bg, var(--slate-bg)); font-weight: 700; font-size: .85rem; max-width: 100%; overflow-wrap: anywhere; }
 .subject-chip button { display: inline-grid; place-items: center; border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0; opacity: .6; }
 .subject-chip button:hover { opacity: 1; }
+
+/* ───────── Intensidad horaria y horario por docente ───────── */
+.class-hour-card { display: grid; grid-template-columns: auto 1fr; gap: .3rem .8rem; align-items: start; margin-bottom: 1rem; }
+.class-hour-card > svg { color: var(--amber); margin-top: .35rem; }
+.class-hour-card .helper-text { grid-column: 2; margin: 0; }
+.class-hour-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem; }
+.class-hour-form .form-field { max-width: 300px; }
+.load-table select, .load-table .hours-input { width: 100%; min-width: 0; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+.load-table .hours-input { max-width: 90px; }
+.load-progress { height: 8px; border-radius: 999px; background: var(--slate-bg); overflow: hidden; margin-bottom: .25rem; min-width: 90px; }
+.load-progress span { display: block; height: 100%; background: var(--amber); }
+.load-progress.is-complete span { background: var(--green); }
+.load-table small { color: var(--muted); font-size: .8rem; }
+.load-actions { white-space: nowrap; text-align: right; }
+.load-actions > * + * { margin-left: .4rem; }
+.load-form { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.load-form h3 { margin: 0; font-size: 1rem; }
+.load-hint { margin: 0; }
+.view-tabs { display: inline-flex; margin-bottom: .8rem; }
+.load-summary-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .9rem; }
+.load-chip { padding: .25rem .65rem; border-radius: 999px; background: var(--amber-bg); font-size: .82rem; }
+.load-chip.is-complete { background: var(--green-bg); }
+.load-summary { margin-top: .8rem; }
+.load-ok { color: var(--green); font-weight: 800; }
+.load-missing { color: var(--amber); font-weight: 800; }
+@media (max-width: 640px) {
+  .load-table, .load-table tbody, .load-table tr, .load-table td { display: block; width: 100%; }
+  .load-table thead { display: none; }
+  .load-table tr { margin-bottom: .7rem; padding: .7rem .8rem; border: 1px solid var(--line); border-radius: 12px; }
+  .load-table td { padding: .25rem 0; border: 0; }
+  .load-table td[data-label]::before { content: attr(data-label); display: block; color: var(--muted); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+  .load-table td:first-child::before { display: none; }
+  .load-actions { text-align: left; }
+  .class-hour-card { grid-template-columns: 1fr; }
+  .class-hour-card > svg { display: none; }
+  .class-hour-card .helper-text { grid-column: 1; }
+}

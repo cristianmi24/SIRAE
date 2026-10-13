@@ -20,6 +20,7 @@ import { Observation, Schedule } from "../models/learning.js";
 import { AppError } from "../utils/errors.js";
 import { actorId, tenantId, objectId, assertGroupAccess, audit } from "../services/learning-common.js";
 import { accountUsage, assertCanAddTeacher, assertInstitutionAccount, assertTeacherCourseCount, teacherLimitError, teacherSlotsWithinLimit } from "../services/account-limits.js";
+import { classHourInput, listTeachingLoads, removeTeachingLoad, saveTeachingLoad, setClassHourMinutes, teachingLoadInput } from "../services/teaching-loads.js";
 import { institutionCourseStudents, institutionOverview } from "../services/institution.js";
 
 const admin = (context: AuthContext) => { if (context.membership.role !== "ADMIN") throw new AppError(403, "FORBIDDEN", "Esta acción requiere el rol administrador."); };
@@ -83,6 +84,10 @@ export const institutionSettingsPut = run(async (req, res, auth) => {
   await audit(auth, "INSTITUTION_SETTINGS_UPDATED", "Institution", tenantId(auth), before, { name: institution.name, timezone: institution.timezone });
   res.json({ item: { id: String(institution._id), name: institution.name, timezone: institution.timezone } });
 });
+export const teachingLoadList = run(async (_req, res, auth) => { res.json(await listTeachingLoads(auth)); });
+export const teachingLoadSave = run(async (req, res, auth) => { admin(auth); res.json({ item: await saveTeachingLoad(auth, teachingLoadInput.parse(req.body)) }); });
+export const teachingLoadRemove = run(async (req, res, auth) => { admin(auth); const { id } = idSchema.parse(req.params); res.json({ item: await removeTeachingLoad(auth, id) }); });
+export const classHourSave = run(async (req, res, auth) => { admin(auth); res.json({ item: await setClassHourMinutes(auth, classHourInput.parse(req.body).classHourMinutes) }); });
 export const accountPlan = run(async (_req, res, auth) => { res.json({ item: await accountUsage(auth) }); });
 export const institutionOverviewGet = run(async (_req, res, auth) => { admin(auth); res.setHeader("Cache-Control", "private, no-store"); res.json(await institutionOverview(auth)); });
 export const institutionCourseStudentsGet = run(async (req, res, auth) => { admin(auth); const params = z.object({ membershipId: idSchema.shape.id, courseId: idSchema.shape.id }).parse(req.params); res.setHeader("Cache-Control", "private, no-store"); res.json(await institutionCourseStudents(auth, params.membershipId, params.courseId)); });

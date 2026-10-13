@@ -65,8 +65,15 @@ const attendanceLinkEventSchema = new Schema<AttendanceLinkEventRecord>({ instit
 attendanceLinkEventSchema.index({ purgeAt: 1 }, { expireAfterSeconds: 0 });
 attendanceLinkEventSchema.index({ classSessionId: 1, deviceHash: 1, kind: 1 });
 
+// Asignación académica: qué docente dicta cada materia en cada curso y cuántas horas semanales tiene.
+// El horario no puede programar más horas de las asignadas ni con otro docente.
+export interface TeachingLoadRecord { institutionId: Types.ObjectId; courseGroupId: Types.ObjectId; subjectId: Types.ObjectId; teacherUserId: Types.ObjectId; weeklyHours: number; active: boolean; createdBy: Types.ObjectId }
+const teachingLoadSchema = new Schema<TeachingLoadRecord>({ institutionId: { type: oid, ref: "Institution", required: true, index: true }, courseGroupId: { type: oid, ref: "CourseGroup", required: true }, subjectId: { type: oid, ref: "Subject", required: true }, teacherUserId: { type: oid, ref: "User", required: true, index: true }, weeklyHours: { type: Number, required: true, min: 0.5, max: 40 }, active: { type: Boolean, default: true }, createdBy: { type: oid, ref: "User", required: true } }, base);
+teachingLoadSchema.index({ institutionId: 1, courseGroupId: 1, subjectId: 1 }, { unique: true });
+
 function cached<T>(name: string, schema: Schema<T>): Model<T> { return (mongoose.models[name] as Model<T> | undefined) ?? model<T>(name, schema); }
 export const Subject = cached("Subject", subjectSchema);
+export const TeachingLoad = cached("TeachingLoad", teachingLoadSchema);
 export const AcademicPeriod = cached("AcademicPeriod", periodSchema);
 export const GradeCategory = cached("GradeCategory", categorySchema);
 export const Assessment = cached("Assessment", assessmentSchema);

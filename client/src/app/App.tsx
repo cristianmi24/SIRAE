@@ -39,6 +39,7 @@ const WebAnalyticsPage = lazyPage(() => import("../pages/WebAnalyticsPage").then
 const ComplaintPage = lazyPage(() => import("../pages/ComplaintPage").then((page) => ({ default: page.ComplaintPage })));
 const PlatformComplaintsPage = lazyPage(() => import("../pages/PlatformComplaintsPage").then((page) => ({ default: page.PlatformComplaintsPage })));
 const PlatformTeachersPage = lazyPage(() => import("../pages/PlatformTeachersPage").then((page) => ({ default: page.PlatformTeachersPage })));
+const TeachingLoadsPage = lazyPage(() => import("../pages/TeachingLoadsPage").then((page) => ({ default: page.TeachingLoadsPage })));
 const SubjectsPage = lazyPage(() => import("../pages/SubjectsPage").then((page) => ({ default: page.SubjectsPage })));
 const InstitutionPage = lazyPage(() => import("../pages/InstitutionPage").then((page) => ({ default: page.InstitutionPage })));
 const AuditPage = lazyPage(() => import("../pages/AuditPage").then((page) => ({ default: page.AuditPage })));
@@ -174,6 +175,7 @@ function AuthenticatedApplication() {
           <Route path="/students/codes" element={<StudentCodesPage />} />
           <Route path="/students/:id" element={<StudentProfilePage />} />
           <Route path="/subjects" element={<SubjectsPage />} />
+          <Route path="/teaching-loads" element={auth.data.user.role === "ADMIN" ? <TeachingLoadsPage /> : <Navigate to="/academic/schedules" replace />} />
           <Route path="/academic" element={<GradesPage />} />
           <Route path="/academic/schedules" element={<SchedulesPage />} />
           <Route path="/attendance" element={<AttendancePage />} />

@@ -5,6 +5,7 @@ import { actorId, assertGroupAccess, audit, forbiddenEntity, objectId, tenantId 
 import { isoWeekday, localDateTime } from "../utils/school-time.js";
 import { AppError } from "../utils/errors.js";
 import { addCourseToTeacher } from "./account-limits.js";
+import { checkScheduleRules } from "./teaching-loads.js";
 
 export async function listSchedules(context: AuthContext) {
   const groupScope = context.membership.role === "ADMIN" ? {} : { courseGroupId: { $in: context.membership.courseGroupIds.map((id) => objectId(id)) } };
@@ -17,7 +18,8 @@ export async function createSchedule(context: AuthContext, input: { courseGroupI
   const [group, subject] = await Promise.all([CourseGroup.findOne({ _id: groupId, institutionId: tenantId(context), active: true }), Subject.findOne({ _id: subjectId, institutionId: tenantId(context), active: true })]);
   if (!group || !subject) throw forbiddenEntity();
   if (!subject.courseGroupIds.some((id) => id.equals(groupId))) throw new AppError(400, "SUBJECT_GROUP_MISMATCH", "La materia no está vinculada a este curso/grupo.");
-  const teacherId = input.teacherUserId ? objectId(input.teacherUserId) : actorId(context);
+  // Respeta la intensidad horaria asignada y evita cruces de horario del docente o del curso.
+  const teacherId = await checkScheduleRules(context, { courseGroupId: groupId, subjectId, teacherUserId: input.teacherUserId ? objectId(input.teacherUserId) : undefined, weekdays: input.weekdays, startTime: input.startTime, endTime: input.endTime });
   const teacherMembership = await Membership.findOne({ userId: teacherId, institutionId: tenantId(context), active: true });
   if (!teacherMembership) throw new AppError(400, "TEACHER_NOT_ASSIGNED", "El docente no pertenece a esta institución.");
   if (context.membership.role !== "ADMIN" && !teacherId.equals(actorId(context))) throw new AppError(403, "FORBIDDEN", "Solo un administrador puede asignar otro docente.");
@@ -37,13 +39,13 @@ export async function updateSchedule(context: AuthContext, id: string, input: { 
   const subjectId = objectId(input.subjectId ?? String(row.subjectId));
   const [group, subject] = await Promise.all([CourseGroup.findOne({ _id: groupId, institutionId: tenantId(context), active: true }), Subject.findOne({ _id: subjectId, institutionId: tenantId(context), active: true })]);
   if (!group || !subject || !subject.courseGroupIds.some((value) => value.equals(groupId))) throw new AppError(400, "SUBJECT_GROUP_MISMATCH", "La materia no está vinculada a este curso/grupo activo.");
-  const teacherId = input.teacherUserId ? objectId(input.teacherUserId) : row.teacherUserId;
-  const teacherMembership = await Membership.findOne({ userId: teacherId, institutionId: tenantId(context), active: true });
-  if (!teacherMembership) throw new AppError(400, "TEACHER_NOT_ASSIGNED", "El docente no pertenece a esta institución.");
-  if (context.membership.role !== "ADMIN" && !teacherId.equals(actorId(context))) throw new AppError(403, "FORBIDDEN", "Solo un administrador puede asignar otro docente.");
   const startTime = input.startTime ?? row.startTime;
   const endTime = input.endTime ?? row.endTime;
   if (endTime <= startTime) throw new AppError(400, "SCHEDULE_INVALID", "La hora final debe ser posterior a la inicial.");
+  const teacherId = await checkScheduleRules(context, { courseGroupId: groupId, subjectId, teacherUserId: input.teacherUserId ? objectId(input.teacherUserId) : undefined, fallbackTeacherId: row.teacherUserId, weekdays: input.weekdays ?? row.weekdays, startTime, endTime, excludeScheduleId: row._id });
+  const teacherMembership = await Membership.findOne({ userId: teacherId, institutionId: tenantId(context), active: true });
+  if (!teacherMembership) throw new AppError(400, "TEACHER_NOT_ASSIGNED", "El docente no pertenece a esta institución.");
+  if (context.membership.role !== "ADMIN" && !teacherId.equals(actorId(context))) throw new AppError(403, "FORBIDDEN", "Solo un administrador puede asignar otro docente.");
   const before = { courseGroupId: String(row.courseGroupId), subjectId: String(row.subjectId), teacherUserId: String(row.teacherUserId), weekdays: row.weekdays, startTime: row.startTime, endTime: row.endTime, toleranceMinutes: row.toleranceMinutes, timezone: row.timezone };
   row.courseGroupId = groupId;
   row.subjectId = subjectId;

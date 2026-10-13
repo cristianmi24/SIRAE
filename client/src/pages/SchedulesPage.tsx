@@ -34,11 +34,14 @@ export function SchedulesPage() {
   const [breakEnd, setBreakEnd] = useState("09:30");
   const [breakForAll, setBreakForAll] = useState(false);
   const [message, setMessage] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const loads = useQuery({ queryKey: ["teachingLoads"], queryFn: api.getTeachingLoads });
+  const [view, setView] = useState<"course" | "teacher">("course");
+  const [teacherViewId, setTeacherViewId] = useState("");
   useEffect(() => { if (!groupId && context.data?.groups.length) setGroupId(context.data.groups[0]!.id); }, [groupId, context.data]);
   const fail = (fallback: string) => (error: unknown) => setMessage({ tone: "error", text: error instanceof Error ? error.message : fallback });
   const resetClass = () => { setEditing(null); setSubjectId(""); setDays([1, 2, 3, 4, 5]); setStart(end); setEnd(addMinutes(end, 60)); setTolerance("10"); };
-  const saveClass = useMutation({ mutationFn: ({ id, input }: { id?: string; input: ScheduleInput }) => id ? api.updateSchedule(id, input) : api.createSchedule(input), onSuccess: async () => { setMessage({ tone: "info", text: editing ? "Clase actualizada." : "Clase agregada al horario." }); resetClass(); await client.invalidateQueries({ queryKey: ["attendanceContext"] }); }, onError: fail("No se pudo guardar la clase.") });
-  const removeClass = useMutation({ mutationFn: api.deactivateSchedule, onSuccess: async () => { setMessage({ tone: "info", text: "Clase quitada del horario. Las asistencias anteriores se conservan." }); await client.invalidateQueries({ queryKey: ["attendanceContext"] }); }, onError: fail("No se pudo quitar la clase.") });
+  const saveClass = useMutation({ mutationFn: ({ id, input }: { id?: string; input: ScheduleInput }) => id ? api.updateSchedule(id, input) : api.createSchedule(input), onSuccess: async () => { setMessage({ tone: "info", text: editing ? "Clase actualizada." : "Clase agregada al horario." }); resetClass(); await Promise.all([client.invalidateQueries({ queryKey: ["attendanceContext"] }), client.invalidateQueries({ queryKey: ["teachingLoads"] })]); }, onError: fail("No se pudo guardar la clase.") });
+  const removeClass = useMutation({ mutationFn: api.deactivateSchedule, onSuccess: async () => { setMessage({ tone: "info", text: "Clase quitada del horario. Las asistencias anteriores se conservan." }); await Promise.all([client.invalidateQueries({ queryKey: ["attendanceContext"] }), client.invalidateQueries({ queryKey: ["teachingLoads"] })]); }, onError: fail("No se pudo quitar la clase.") });
   const addBreak = useMutation({ mutationFn: () => api.createScheduleBreak({ label: breakLabel.trim(), weekdays: breakDays, startTime: breakStart, endTime: breakEnd, ...(breakForAll ? {} : { courseGroupId: groupId }) }), onSuccess: async () => { setMessage({ tone: "info", text: `${breakLabel} agregado al horario.` }); await client.invalidateQueries({ queryKey: ["scheduleBreaks"] }); }, onError: fail("No se pudo agregar el descanso.") });
   const removeBreak = useMutation({ mutationFn: api.deleteScheduleBreak, onSuccess: async () => { await client.invalidateQueries({ queryKey: ["scheduleBreaks"] }); }, onError: fail("No se pudo quitar el descanso.") });
 
@@ -51,29 +54,57 @@ export function SchedulesPage() {
   const courseBreaks = (breaks.data?.items ?? []).filter((b) => !b.courseGroupId || b.courseGroupId === groupId);
   const subjectName = (id: string) => allSubjects.find((s) => s.id === id)?.name ?? "Materia";
   const subjectTone = (id: string) => subjectTones[Math.max(0, allSubjects.findIndex((s) => s.id === id)) % subjectTones.length];
-  const beginEdit = (schedule: ScheduleDto) => { setEditing(schedule); setSubjectId(schedule.subjectId); setDays(schedule.weekdays); setStart(schedule.startTime); setEnd(schedule.endTime); setTolerance(String(schedule.toleranceMinutes)); setMessage(null); document.getElementById("class-form")?.scrollIntoView({ behavior: "smooth", block: "center" }); };
+  // Intensidad horaria y vista por docente.
+  const teacherList = loads.data?.teachers ?? [];
+  const selfId = auth.data?.user?.id ?? "";
+  const activeTeacher = teacherViewId || (admin ? teacherList.find((t) => t.role === "DOCENTE")?.userId ?? teacherList[0]?.userId ?? "" : selfId);
+  const teacherName = (id: string) => teacherList.find((t) => t.userId === id)?.name ?? "Docente";
+  const courseLabel = (id: string) => groups.find((g) => g.id === id)?.label.replace(" · ", " ") ?? "";
+  const courseLoads = (loads.data?.items ?? []).filter((l) => l.courseGroupId === groupId);
+  const selectedLoad = courseLoads.find((l) => l.subjectId === subjectId);
+  const classHourMinutes = loads.data?.classHourMinutes ?? 60;
+  const draftHours = (() => { const [sh, sm] = start.split(":").map(Number); const [eh, em] = end.split(":").map(Number); return Math.max(0, (eh! * 60 + em!) - (sh! * 60 + sm!)) * days.length / classHourMinutes; })();
+  const editingHours = editing && editing.subjectId === subjectId ? (() => { const [sh, sm] = editing.startTime.split(":").map(Number); const [eh, em] = editing.endTime.split(":").map(Number); return ((eh! * 60 + em!) - (sh! * 60 + sm!)) * editing.weekdays.length / classHourMinutes; })() : 0;
+  const hoursLeft = selectedLoad ? selectedLoad.weeklyHours - selectedLoad.scheduledHours + editingHours : undefined;
+  const fmtHours = (value: number) => value.toLocaleString("es-CO", { maximumFractionDigits: 2 });
+  const teacherClasses = context.data.schedules.filter((s) => s.teacherUserId === activeTeacher);
+  const teacherBreaks = (breaks.data?.items ?? []).filter((b) => !b.courseGroupId);
+  const beginEdit = (schedule: ScheduleDto) => { setView("course"); setGroupId(schedule.courseGroupId); setEditing(schedule); setSubjectId(schedule.subjectId); setDays(schedule.weekdays); setStart(schedule.startTime); setEnd(schedule.endTime); setTolerance(String(schedule.toleranceMinutes)); setMessage(null); document.getElementById("class-form")?.scrollIntoView({ behavior: "smooth", block: "center" }); };
 
   return <section className="page">
     <div className="page-heading"><div><h1>Horarios</h1><p className="page-subtitle">Arma el horario de cada curso: agrega las clases y los descansos. La tolerancia indica hasta cuántos minutos después del inicio cuenta como llegada a tiempo.</p></div></div>
     {message && <p className={`notice notice-${message.tone}`} role="status">{message.text}</p>}
     {!groups.length ? <p className="notice notice-info">Aún no hay cursos. Se crean al <Link to="/students/import">cargar estudiantes desde Excel</Link>.</p> : <>
+      <div className="segmented view-tabs" role="tablist" aria-label="Ver horario">
+        <button role="tab" aria-selected={view === "course"} className={view === "course" ? "is-active" : ""} onClick={() => setView("course")}>Por curso</button>
+        <button role="tab" aria-selected={view === "teacher"} className={view === "teacher" ? "is-active" : ""} onClick={() => setView("teacher")}>{admin && teacherList.length > 1 ? "Por docente" : "Mi horario"}</button>
+      </div>
+      {view === "teacher" ? <article className="content-card">
+        {admin && teacherList.length > 1 && <div className="chip-filter" role="group" aria-label="Docente">{teacherList.map((t) => <button key={t.userId} className={`filter-chip ${t.userId === activeTeacher ? "is-active" : ""}`} onClick={() => setTeacherViewId(t.userId)}>{t.name}</button>)}</div>}
+        <div className="card-title-row"><h2>Horario de {activeTeacher === selfId && !admin ? "mis clases" : teacherName(activeTeacher)}</h2><span className="helper-text">{fmtHours(teacherClasses.reduce((sum, c) => { const [sh, sm] = c.startTime.split(":").map(Number); const [eh, em] = c.endTime.split(":").map(Number); return sum + ((eh! * 60 + em!) - (sh! * 60 + sm!)) * c.weekdays.length; }, 0) / classHourMinutes)} h semanales</span></div>
+        <Timetable classes={teacherClasses} breaks={teacherBreaks} subjectName={subjectName} subjectTone={subjectTone} cellLabel={(c) => `${subjectName(c.subjectId)} · ${courseLabel(c.courseGroupId)}`} onEdit={beginEdit} />
+        {(loads.data?.items ?? []).some((l) => l.teacherUserId === activeTeacher) && <ul className="mini-list load-summary">{(loads.data?.items ?? []).filter((l) => l.teacherUserId === activeTeacher).map((l) => <li key={l.id}><span className={`dot tone-${subjectTone(l.subjectId)}`} /><span className="mini-list-main"><strong>{l.subjectName}</strong> · Curso {l.courseLabel}</span><span className={l.scheduledHours >= l.weeklyHours ? "load-ok" : "load-missing"}>{fmtHours(l.scheduledHours)}/{fmtHours(l.weeklyHours)} h</span></li>)}</ul>}
+      </article> : <>
       <div className="chip-filter" role="group" aria-label="Curso">{groups.map((g) => <button key={g.id} className={`filter-chip ${g.id === groupId ? "is-active" : ""}`} onClick={() => { setGroupId(g.id); setEditing(null); setSubjectId(""); }}>Curso {g.label.replace(" · ", " ")}</button>)}</div>
 
       <article className="content-card">
         <div className="card-title-row"><h2>Horario semanal</h2><span className="helper-text">Zona horaria: {context.data.timezone}</span></div>
-        <Timetable classes={classes} breaks={courseBreaks} subjectName={subjectName} subjectTone={subjectTone} onEdit={beginEdit} />
+        <Timetable classes={classes} breaks={courseBreaks} subjectName={subjectName} subjectTone={subjectTone} cellLabel={(c) => subjectName(c.subjectId)} onEdit={beginEdit} />
+        {courseLoads.length > 0 && <div className="load-summary-row">{courseLoads.map((l) => <span key={l.id} className={`load-chip ${l.scheduledHours >= l.weeklyHours ? "is-complete" : ""}`} title={`Docente: ${l.teacherName}`}><strong>{l.subjectName}</strong> {fmtHours(l.scheduledHours)}/{fmtHours(l.weeklyHours)} h</span>)}{admin && <Link to="/teaching-loads" className="link-button">Editar intensidad</Link>}</div>}
       </article>
+      </>}
 
       <div className="feature-grid">
         <article className="content-card" id="class-form">
           <div className="card-title-row"><h2>{editing ? `Editar clase de ${subjectName(editing.subjectId)}` : "Agregar clase"}</h2>{editing && <button className="button button-ghost compact-button" onClick={resetClass}><X size={15} /> Cancelar</button>}</div>
           <form className="form-grid compact-form" onSubmit={(e) => { e.preventDefault(); saveClass.mutate({ id: editing?.id, input: { courseGroupId: groupId, subjectId, weekdays: days, startTime: start, endTime: end, toleranceMinutes: Number(tolerance) } }); }}>
             <label className="form-field form-full"><span>Asignatura</span><select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} required><option value="">{subjects.length ? "Elige asignatura" : "Este curso no tiene asignaturas"}</option>{subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+            {selectedLoad && hoursLeft !== undefined && <p className={`notice ${draftHours > hoursLeft + 1e-9 ? "notice-error" : "notice-info"} form-full load-hint`}><span>Docente: <strong>{selectedLoad.teacherName}</strong> · {fmtHours(selectedLoad.weeklyHours)} h semanales · {hoursLeft > 0 ? `quedan ${fmtHours(hoursLeft)} h por repartir` : "ya no quedan horas"}{draftHours > 0 ? ` · esta clase suma ${fmtHours(draftHours)} h` : ""}</span></p>}
             <div className="form-field form-full"><span>Días</span><DayPicker days={days} onChange={setDays} /></div>
             <label className="form-field"><span>Inicio</span><input type="time" value={start} onChange={(e) => setStart(e.target.value)} required /></label>
             <label className="form-field"><span>Fin</span><input type="time" value={end} onChange={(e) => setEnd(e.target.value)} required /></label>
             <label className="form-field"><span>Tolerancia (min)</span><input type="number" min="0" max="180" value={tolerance} onChange={(e) => setTolerance(e.target.value)} required /></label>
-            <div className="form-field form-actions-end"><button className="button button-primary" disabled={saveClass.isPending || !days.length || !subjectId || end <= start}>{saveClass.isPending ? "Guardando…" : editing ? "Guardar cambios" : "Agregar clase"}</button></div>
+            <div className="form-field form-actions-end"><button className="button button-primary" disabled={saveClass.isPending || !days.length || !subjectId || end <= start || (hoursLeft !== undefined && draftHours > hoursLeft + 1e-9)}>{saveClass.isPending ? "Guardando…" : editing ? "Guardar cambios" : "Agregar clase"}</button></div>
           </form>
           {classes.length > 0 && <ul className="mini-list">{classes.map((c) => <li key={c.id}><span className={`dot tone-${subjectTone(c.subjectId)}`} /><span className="mini-list-main"><strong>{subjectName(c.subjectId)}</strong> {c.weekdays.map((d) => week[d - 1]!.label).join(", ")} · {c.startTime}–{c.endTime}</span><button className="icon-only" onClick={() => beginEdit(c)} aria-label={`Editar ${subjectName(c.subjectId)}`} title="Editar clase"><Pencil size={15} /></button><button className="icon-only" onClick={() => { if (window.confirm("¿Quitar esta clase del horario? Las asistencias anteriores se conservan.")) removeClass.mutate(c.id); }} aria-label={`Quitar ${subjectName(c.subjectId)}`} title="Quitar clase"><Trash2 size={15} /></button></li>)}</ul>}
         </article>
@@ -97,7 +128,7 @@ export function SchedulesPage() {
 
 function addMinutes(time: string, minutes: number) { const [h, m] = time.split(":").map(Number); const total = Math.min(23 * 60 + 59, h! * 60 + m! + minutes); return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`; }
 
-function Timetable({ classes, breaks, subjectName, subjectTone, onEdit }: { classes: ScheduleDto[]; breaks: ScheduleBreakDto[]; subjectName: (id: string) => string; subjectTone: (id: string) => string | undefined; onEdit: (s: ScheduleDto) => void }) {
+function Timetable({ classes, breaks, subjectName, subjectTone, cellLabel, onEdit }: { classes: ScheduleDto[]; breaks: ScheduleBreakDto[]; subjectName: (id: string) => string; subjectTone: (id: string) => string | undefined; cellLabel: (s: ScheduleDto) => string; onEdit: (s: ScheduleDto) => void }) {
   if (!classes.length && !breaks.length) return <p className="empty-state">Este curso aún no tiene clases. Agrégalas abajo y aparecerán aquí.</p>;
   const usedDays = new Set([...classes, ...breaks].flatMap((x) => x.weekdays));
   const days = week.filter((d) => d.n <= 5 || usedDays.has(d.n));
@@ -113,7 +144,7 @@ function Timetable({ classes, breaks, subjectName, subjectTone, onEdit }: { clas
         <th className="time-col" scope="row">{slot.start}<small>{slot.end}</small></th>
         {fullBreak ? <td colSpan={days.length} className="break-cell"><Coffee size={15} aria-hidden="true" /> {fullBreak.label}</td>
           : days.map((d) => { const c = slotClasses.find((x) => x.weekdays.includes(d.n)); const b = !c && slotBreaks.find((x) => x.weekdays.includes(d.n));
-            return <td key={d.n}>{c ? <button className={`class-cell tone-${subjectTone(c.subjectId)}`} onClick={() => onEdit(c)} title="Editar clase">{subjectName(c.subjectId)}</button> : b ? <span className="break-chip">{b.label}</span> : null}</td>; })}
+            return <td key={d.n}>{c ? <button className={`class-cell tone-${subjectTone(c.subjectId)}`} onClick={() => onEdit(c)} title={`Editar clase de ${subjectName(c.subjectId)}`}>{cellLabel(c)}</button> : b ? <span className="break-chip">{b.label}</span> : null}</td>; })}
       </tr>;
     })}</tbody>
   </table></div>;

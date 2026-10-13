@@ -242,6 +242,56 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
     });
   });
 
+  describe("intensidad horaria y horario por docente", () => {
+    it("reparte las horas asignadas, respeta el docente y evita cruces", async () => {
+      const inst = await register("inst-horas", "INSTITUTION", { institutionName: "Colegio Horas" });
+      const c9 = (await createCourse(inst, "9")).body.item.id;
+      const c10 = (await createCourse(inst, "10")).body.item.id;
+      const math = (await post(inst, "/api/learning/subjects", { name: "Matemáticas", courseGroupIds: [c9, c10] })).body.item.id;
+      const ana = await post(inst, "/api/learning/institution/teachers", { name: "Ana Docente", email: email("ana-horas"), password: "clave-segura-123", courseGroupIds: [c9] });
+      expect(ana.status, JSON.stringify(ana.body)).toBe(201);
+      const luis = await post(inst, "/api/learning/institution/teachers", { name: "Luis Docente", email: email("luis-horas"), password: "clave-segura-123", courseGroupIds: [c10] });
+      const loads0 = (await inst.get("/api/learning/teaching-loads")).body;
+      const anaId = loads0.teachers.find((t: { name: string }) => t.name === "Ana Docente").userId;
+      const luisId = loads0.teachers.find((t: { name: string }) => t.name === "Luis Docente").userId;
+      expect(luis.status).toBe(201);
+      expect((await inst.put("/api/learning/teaching-loads/class-hour").set("Origin", ORIGIN).send({ classHourMinutes: 60 })).status).toBe(200);
+      const saved = await inst.put("/api/learning/teaching-loads").set("Origin", ORIGIN).send({ courseGroupId: c9, subjectId: math, teacherUserId: anaId, weeklyHours: 3 });
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+
+      const base = { courseGroupId: c9, subjectId: math, toleranceMinutes: 10 };
+      // Sin indicar docente, la clase queda con el docente asignado.
+      const first = await post(inst, "/api/learning/schedules", { ...base, weekdays: [1, 3], startTime: "07:00", endTime: "08:00" });
+      expect(first.status, JSON.stringify(first.body)).toBe(201);
+      expect(first.body.item.teacherUserId).toBe(anaId);
+      // 2 h ya programadas; otras 2 h superan las 3 h de la materia.
+      const over = await post(inst, "/api/learning/schedules", { ...base, weekdays: [2, 4], startTime: "07:00", endTime: "08:00" });
+      expect(over.status).toBe(409);
+      expect(over.body.error.code).toBe("LOAD_HOURS_EXCEEDED");
+      expect(over.body.error.message).toContain("quedan 1 h");
+      expect((await post(inst, "/api/learning/schedules", { ...base, weekdays: [5], startTime: "07:00", endTime: "08:00" })).status).toBe(201);
+      // Otro docente no puede dictar la materia asignada a Ana.
+      const wrong = await post(inst, "/api/learning/schedules", { ...base, teacherUserId: luisId, weekdays: [6], startTime: "07:00", endTime: "08:00" });
+      expect(wrong.body.error.code).toBe("LOAD_TEACHER_MISMATCH");
+      // No se puede bajar la intensidad por debajo de lo programado.
+      expect((await inst.put("/api/learning/teaching-loads").set("Origin", ORIGIN).send({ courseGroupId: c9, subjectId: math, teacherUserId: anaId, weeklyHours: 2 })).body.error.code).toBe("LOAD_BELOW_SCHEDULE");
+      // Cruce: Ana no puede tener dos clases a la misma hora en cursos distintos.
+      await inst.put("/api/learning/teaching-loads").set("Origin", ORIGIN).send({ courseGroupId: c10, subjectId: math, teacherUserId: anaId, weeklyHours: 4 });
+      const clash = await post(inst, "/api/learning/schedules", { courseGroupId: c10, subjectId: math, toleranceMinutes: 10, weekdays: [1], startTime: "07:30", endTime: "08:30" });
+      expect(clash.body.error.code).toBe("SCHEDULE_OVERLAP");
+      expect((await post(inst, "/api/learning/schedules", { courseGroupId: c10, subjectId: math, toleranceMinutes: 10, weekdays: [1], startTime: "08:00", endTime: "09:00" })).status).toBe(201);
+
+      const loads = (await inst.get("/api/learning/teaching-loads")).body.items;
+      expect(loads.find((l: { courseGroupId: string }) => l.courseGroupId === c9)).toMatchObject({ weeklyHours: 3, scheduledHours: 3, teacherName: "Ana Docente" });
+      // Ana ve su propia asignación; un docente no puede cambiarla.
+      const anaAgent = request.agent(app);
+      await post(anaAgent, "/api/auth/login", { email: email("ana-horas"), password: "clave-segura-123" });
+      const own = (await anaAgent.get("/api/learning/teaching-loads")).body;
+      expect(own.items.every((l: { teacherUserId: string }) => l.teacherUserId === anaId)).toBe(true);
+      expect((await anaAgent.put("/api/learning/teaching-loads").set("Origin", ORIGIN).send({ courseGroupId: c9, subjectId: math, teacherUserId: anaId, weeklyHours: 10 })).status).toBe(403);
+    });
+  });
+
   describe("quejas y solicitudes", () => {
     const valid = { type: "ELIMINACION_DATOS", requesterRole: "PADRE_ACUDIENTE", name: "Marta Gómez", email: "marta@correo.test", studentName: "Ana Gómez", institutionName: "Colegio Uno", message: "Solicito eliminar los datos de mi hija del sistema.", consent: true };
     it("recibe la solicitud pública y la entrega solo al administrador de la plataforma", async () => {

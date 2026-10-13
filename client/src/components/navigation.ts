@@ -1,4 +1,4 @@
-import { Activity, BarChart3, MessageSquareWarning, Building2, BookOpenText, CalendarClock, FileBarChart2, Home, NotebookPen, QrCode, Settings2, BookMarked, ShieldCheck, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Clock3, MessageSquareWarning, Building2, BookOpenText, CalendarClock, FileBarChart2, Home, NotebookPen, QrCode, Settings2, BookMarked, ShieldCheck, TrendingUp, Users, type LucideIcon } from "lucide-react";
 
 export type NavItem = { to: string; label: string; icon: LucideIcon; tone: string; step?: number; shortcut?: string; short?: string };
 export type NavSection = { title: string; items: NavItem[] };
@@ -36,9 +36,10 @@ export const adminItems: NavItem[] = [
 // Solo para el administrador de una cuenta de institución.
 export const institutionItem: NavItem = { to: "/institution", label: "Institución", icon: Building2, tone: "teal" };
 export const isInstitutionAdmin = (user: { role: string | null; accountType?: string }) => user.role === "ADMIN" && user.accountType === "INSTITUTION";
+export const teachingLoadsItem: NavItem = { to: "/teaching-loads", label: "Intensidad horaria", icon: Clock3, tone: "amber" };
 export function adminItemsFor(user: { role: string | null; accountType?: string }): NavItem[] {
   if (user.role !== "ADMIN") return [];
-  return isInstitutionAdmin(user) ? [institutionItem, ...adminItems] : adminItems;
+  return isInstitutionAdmin(user) ? [institutionItem, teachingLoadsItem, ...adminItems] : [teachingLoadsItem, ...adminItems];
 }
 
 export function navItemsFor(user: { role: string | null; platformAdmin?: boolean; accountType?: string }): NavItem[] {

@@ -83,6 +83,8 @@ export type ComplaintRole = "PADRE_ACUDIENTE" | "ESTUDIANTE" | "DOCENTE" | "INST
 export type ComplaintStatus = "NUEVA" | "EN_REVISION" | "RESUELTA";
 export interface ComplaintInput { type: ComplaintType; requesterRole: ComplaintRole; name: string; email: string; phone?: string; institutionName?: string; studentName?: string; message: string; consent: true; website?: string }
 export interface ComplaintDto { id: string; ticket: string; type: ComplaintType; requesterRole: ComplaintRole; name: string; email: string; phone?: string; institutionName?: string; studentName?: string; message: string; status: ComplaintStatus; adminNote?: string; resolvedAt?: string; createdAt?: string; updatedAt?: string }
+export interface TeachingLoadDto { id: string; courseGroupId: string; courseLabel: string; subjectId: string; subjectName: string; teacherUserId: string; teacherName: string; weeklyHours: number; scheduledHours: number }
+export interface TeachingLoadsDto { classHourMinutes: number; teachers: { userId: string; name: string; role: "ADMIN" | "DOCENTE"; courseGroupIds: string[] }[]; items: TeachingLoadDto[] }
 export interface ObservationDto { id: string; studentId: string; studentName?: string; type: string; description: string; priority: "LOW" | "NORMAL" | "HIGH"; followUp?: string; status: "OPEN" | "IN_PROGRESS" | "CLOSED"; observedAt: string }
 async function getAllStudents(status: "ACTIVO" | "TODOS" = "ACTIVO"): Promise<PaginatedResult<StudentDto>> {
   const items: StudentDto[] = [];
@@ -104,6 +106,10 @@ export const api = {
   sendComplaint: (input: ComplaintInput) => request<{ ticket: string; createdAt?: string }>("/api/public/complaints", json("POST", input)),
   getComplaints: () => request<{ items: ComplaintDto[]; counts: Record<ComplaintStatus, number> }>("/api/platform/complaints"),
   updateComplaint: (id: string, input: { status: ComplaintStatus; adminNote?: string }) => request<{ item: ComplaintDto }>(`/api/platform/complaints/${encodeURIComponent(id)}`, json("PATCH", input)),
+  getTeachingLoads: () => request<TeachingLoadsDto>("/api/learning/teaching-loads"),
+  saveTeachingLoad: (input: { courseGroupId: string; subjectId: string; teacherUserId: string; weeklyHours: number }) => request<{ item: { id: string; weeklyHours: number; scheduledHours: number } }>("/api/learning/teaching-loads", json("PUT", input)),
+  removeTeachingLoad: (id: string) => request<{ item: { id: string } }>(`/api/learning/teaching-loads/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  setClassHour: (classHourMinutes: number) => request<{ item: { classHourMinutes: number } }>("/api/learning/teaching-loads/class-hour", json("PUT", { classHourMinutes })),
   getMe: () => request<AuthState>("/api/auth/me"),
   getPlatformOverview: () => request<PlatformOverviewDto>("/api/platform/overview"),
   getPlatformAnalytics: (days: number) => request<AnalyticsSummaryDto>(`/api/platform/analytics?days=${days}`),
