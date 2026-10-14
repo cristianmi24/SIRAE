@@ -46,6 +46,7 @@ function WorkspaceSwitcher({ user }: { user: AuthUserDto }) {
 
 const quickActions = [
   { to: "/attendance", label: "Tomar asistencia", icon: QrCode, tone: "green" },
+  { to: "/attendance/qr-test", label: "Probar lector QR", icon: QrCode, tone: "teal" },
   { to: "/academic", label: "Registrar notas", icon: NotebookPen, tone: "violet" },
   { to: "/observations", label: "Nueva observación", icon: BookOpenText, tone: "coral" },
   { to: "/students?nuevo=1", label: "Nuevo estudiante", icon: UserPlus, tone: "blue" },

@@ -21,6 +21,7 @@ export const sections: NavSection[] = [
   ] },
   { title: "Día a día", items: [
     { to: "/attendance", label: "Asistencia", icon: QrCode, tone: "green", step: 4, shortcut: "5" },
+    { to: "/attendance/qr-test", label: "Probar QR", icon: QrCode, tone: "teal" },
     { to: "/observations", label: "Seguimiento", icon: BookOpenText, tone: "coral", step: 5, shortcut: "6" },
   ] },
   { title: "Resultados", items: [

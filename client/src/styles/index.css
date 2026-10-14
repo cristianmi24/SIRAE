@@ -1050,6 +1050,10 @@ body.camera-open { overflow: hidden; }
   .marketing-login svg { display: none; }
 }
 
+/* ───────── Prueba local del lector QR ───────── */
+.qr-test-image { display: block; width: min(100%, 320px); aspect-ratio: 1; margin: .75rem auto 1rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.qr-test-image + .button { width: 100%; justify-content: center; }
+
 /* ───────── Quejas y solicitudes ───────── */
 .complaint-body { max-width: 820px; margin: 0 auto; }
 .complaint-form { margin-top: 1.2rem; }

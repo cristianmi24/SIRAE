@@ -19,6 +19,7 @@ const DashboardPage = lazyPage(() => import("../pages/DashboardPage").then((page
 const StudentProfilePage = lazyPage(() => import("../pages/StudentProfilePage").then((page) => ({ default: page.StudentProfilePage })));
 const StudentsPage = lazyPage(() => import("../pages/StudentsPage").then((page) => ({ default: page.StudentsPage })));
 const AttendancePage = lazyPage(() => import("../pages/AttendancePage").then((page) => ({ default: page.AttendancePage })));
+const QrTestPage = lazyPage(() => import("../pages/QrTestPage").then((page) => ({ default: page.QrTestPage })));
 const SchedulesPage = lazyPage(() => import("../pages/SchedulesPage").then((page) => ({ default: page.SchedulesPage })));
 const GradesPage = lazyPage(() => import("../pages/GradesPage").then((page) => ({ default: page.GradesPage })));
 const ObservationsPage = lazyPage(() => import("../pages/ObservationsPage").then((page) => ({ default: page.ObservationsPage })));
@@ -179,6 +180,7 @@ function AuthenticatedApplication() {
           <Route path="/academic" element={<GradesPage />} />
           <Route path="/academic/schedules" element={<SchedulesPage />} />
           <Route path="/attendance" element={<AttendancePage />} />
+          <Route path="/attendance/qr-test" element={<QrTestPage />} />
           <Route path="/observations" element={<ObservationsPage />} />
           <Route path="/scan" element={<Navigate to="/attendance" replace />} />
           <Route path="/imports" element={<Navigate to="/students/import" replace />} />
