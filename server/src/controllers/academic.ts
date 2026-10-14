@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 import { z } from "zod";
 import * as archiver from "archiver";
 import type { NextFunction, Request, Response } from "express";
-import { createQrDataUrl, createOpaqueQrToken, createQrPayload, hashQrPayload } from "../utils/qr.js";
+import { createQrDataUrl, createOpaqueQrToken, createQrPayload, hashQrPayload, openQrToken, sealQrToken } from "../utils/qr.js";
 import { requireAuthContext } from "../middleware/security.js";
 import { createCourseGroup, courseGroupInputSchema, listCourseGroups } from "../services/course-groups.js";
 import {
@@ -131,7 +131,7 @@ export async function exportStudentQrsController(request: Request, response: Res
       const context = requireAuthContext(request);
       // Un docente solo exporta (y renueva) los QR de los cursos que tiene asignados.
       const scope = context.membership.role === "ADMIN" ? {} : { courseGroupId: { $in: context.membership.courseGroupIds } };
-      const students = await Student.find({ institutionId: context.institution.id, active: true, ...scope }).sort({ lastName: 1, firstName: 1 }).limit(10_000);
+      const students = await Student.find({ institutionId: context.institution.id, active: true, ...scope }).sort({ lastName: 1, firstName: 1 }).select("+qrTokenEnc").limit(10_000);
       if (!students.length) {
         response.status(404).json({ error: { code: "NO_STUDENTS", message: "No hay estudiantes activos para exportar." } });
         return;
@@ -140,10 +140,15 @@ export async function exportStudentQrsController(request: Request, response: Res
       const qrWidth = isZip ? 640 : 1024;
       const files: { name: string; studentName: string; document: string; image: Buffer }[] = [];
       for (const student of students) {
-        const token = createOpaqueQrToken();
-        student.qrTokenHash = hashQrPayload(createQrPayload(token));
-        student.qrVersion += 1;
-        await student.save();
+        // Si el QR ya está guardado se reutiliza (los impresos siguen funcionando); si no, se crea y se guarda.
+        let token = openQrToken(student.qrTokenEnc);
+        if (!token) {
+          token = createOpaqueQrToken();
+          student.qrTokenHash = hashQrPayload(createQrPayload(token));
+          student.qrTokenEnc = sealQrToken(token);
+          student.qrVersion += 1;
+          await student.save();
+        }
         files.push({
           name: `QR-${student.firstName}-${student.lastName}-${student.document}`.replace(/[^a-zA-Z0-9_-]+/g, "-"),
           studentName: `${student.firstName} ${student.lastName}`,

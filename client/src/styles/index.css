@@ -1154,3 +1154,10 @@ body.camera-open { overflow: hidden; }
   .class-hour-card > svg { display: none; }
   .class-hour-card .helper-text { grid-column: 1; }
 }
+
+/* QR en el perfil del estudiante */
+.student-qr-body { display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; }
+.student-qr-image { width: min(100%, 260px); height: auto; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 12px; background: #fff; padding: .3rem; }
+.student-qr-side { flex: 1 1 220px; min-width: 0; display: grid; gap: .8rem; }
+.camera-zoom { display: flex; align-items: center; gap: .6rem; color: #fff; font-size: .8rem; font-weight: 700; }
+.camera-zoom input[type="range"] { flex: 1; min-width: 0; accent-color: var(--sun, #ffb703); }

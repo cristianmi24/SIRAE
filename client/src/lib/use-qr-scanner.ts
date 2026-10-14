@@ -3,11 +3,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const IDLE_LIMIT_MS = 60_000;
 const SCAN_INTERVAL_MS = 120;
 
-// Conserva una resolución alta y una proporción acorde con la orientación del visor.
+// Proporción 4:3 (la nativa de casi todos los sensores): muestra más campo de visión que 16:9, que recorta los lados y se siente «muy cerca».
 function resolutionConstraints(): MediaTrackConstraints {
   return window.innerHeight > window.innerWidth
-    ? { width: { ideal: 1080 }, height: { ideal: 1920 }, aspectRatio: { ideal: 9 / 16 } }
-    : { width: { ideal: 1920 }, height: { ideal: 1080 }, aspectRatio: { ideal: 16 / 9 } };
+    ? { width: { ideal: 1200 }, height: { ideal: 1600 }, aspectRatio: { ideal: 3 / 4 } }
+    : { width: { ideal: 1600 }, height: { ideal: 1200 }, aspectRatio: { ideal: 4 / 3 } };
 }
 
 function cameraErrorMessage(reason: unknown): string {
@@ -71,16 +71,20 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
   const [active, setActive] = useState(false);
   const [error, setError] = useState("");
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  // Cada stop() invalida los start() que aún esperan (permiso o carga): así una cámara que llega tarde se apaga sola.
+  const generationRef = useRef(0);
+  const [zoomRange, setZoomRange] = useState<{ min: number; max: number; step: number; value: number } | null>(null);
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
 
   const stop = useCallback(() => {
+    generationRef.current += 1;
     window.clearTimeout(idleRef.current);
     try { stopLoopRef.current?.(); } catch { /* ya detenida */ }
     stopLoopRef.current = null;
     releaseVideo(videoRef.current, streamRef.current);
     streamRef.current = null;
-    setTorchSupported(false); setTorchOn(false);
+    setTorchSupported(false); setTorchOn(false); setZoomRange(null);
     setActive(false);
   }, []);
 
@@ -99,9 +103,12 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
     setError("");
     const video = videoRef.current;
     if (!video || streamRef.current) return;
+    const generation = generationRef.current;
+    const cancelled = () => generation !== generationRef.current;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) { setError("La cámara solo funciona en una conexión segura (https)."); return; }
     // Si el navegador ya sabe que no hay ninguna cámara, se avisa sin pedir permiso.
     const devices = await navigator.mediaDevices.enumerateDevices?.().catch(() => [] as MediaDeviceInfo[]) ?? [];
+    if (cancelled()) return;
     if (devices.length > 0 && !devices.some((device) => device.kind === "videoinput")) { setError("No se encontró una cámara en este dispositivo. Puedes registrar la asistencia por código o a mano."); return; }
     try {
       // Descarga ZXing mientras el navegador solicita/abre la cámara, para no retrasar el primer QR.
@@ -110,22 +117,31 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
       });
       void backendPromise.catch(() => undefined);
       const stream = await openCamera(typeof deviceId === "string" ? deviceId : undefined);
-      if (streamRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
+      // Si se cerró la cámara o se salió de la página mientras esperaba el permiso, se apaga de inmediato.
+      if (cancelled() || streamRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       streamRef.current = stream;
       // Enfoque continuo cuando el dispositivo lo permite.
       const track = stream.getVideoTracks()[0];
       const caps = (track?.getCapabilities?.() ?? {}) as { focusMode?: string[] };
       setTorchSupported(Boolean((caps as { torch?: boolean }).torch));
+      // Zoom: se empieza en el mínimo (la vista más amplia) y se puede acercar con el control.
+      const zoomCaps = (caps as { zoom?: { min: number; max: number; step?: number } }).zoom;
+      if (zoomCaps && zoomCaps.max > zoomCaps.min) {
+        await track!.applyConstraints({ advanced: [{ zoom: zoomCaps.min } as MediaTrackConstraintSet] }).catch(() => undefined);
+        setZoomRange({ min: zoomCaps.min, max: zoomCaps.max, step: zoomCaps.step || 0.1, value: zoomCaps.min });
+      }
       if (caps.focusMode?.includes("continuous")) await track!.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] }).catch(() => undefined);
       video.srcObject = stream;
       video.setAttribute("playsinline", "true");
       await video.play();
+      if (cancelled()) { releaseVideo(video, stream); streamRef.current = null; return; }
       setActive(true);
       armIdle();
       // Con el permiso concedido ya se conocen todas las cámaras (para poder cambiar entre ellas).
       void listCameras().then(setCameras);
 
       const backend = await backendPromise;
+      if (cancelled()) return;
       if ("detector" in backend && backend.detector) {
         const detector = backend.detector;
         let running = true;
@@ -160,6 +176,12 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
     try { await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] }); setTorchOn(next); } catch { setTorchSupported(false); }
   }, [torchOn]);
 
+  const setZoom = useCallback(async (value: number) => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    try { await track.applyConstraints({ advanced: [{ zoom: value } as MediaTrackConstraintSet] }); setZoomRange((current) => (current ? { ...current, value } : current)); } catch { /* sin zoom */ }
+  }, []);
+
   // Pasa a la siguiente cámara (por ejemplo, de la frontal a la trasera).
   const switchCamera = useCallback(async () => {
     if (cameras.length < 2) return;
@@ -174,10 +196,12 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
     const hide = () => { if (document.visibilityState === "hidden") stop(); };
     document.addEventListener("visibilitychange", hide);
     window.addEventListener("pagehide", stop);
-    return () => { document.removeEventListener("visibilitychange", hide); window.removeEventListener("pagehide", stop); stop(); };
+    window.addEventListener("beforeunload", stop);
+    document.addEventListener("freeze", stop);
+    return () => { document.removeEventListener("visibilitychange", hide); window.removeEventListener("pagehide", stop); window.removeEventListener("beforeunload", stop); document.removeEventListener("freeze", stop); stop(); };
   }, [stop]);
 
-  return { videoRef, active, error, start, stop, armIdle, cameras: cameras.length, switchCamera, torchSupported, torchOn, toggleTorch };
+  return { videoRef, active, error, start, stop, armIdle, cameras: cameras.length, switchCamera, torchSupported, torchOn, toggleTorch, zoom: zoomRange, setZoom };
 }
 
 /** Lee un QR desde una foto o captura de pantalla (como hacen los lectores desde la galería). */

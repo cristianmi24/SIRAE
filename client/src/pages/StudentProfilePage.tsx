@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { Link, useParams } from "react-router-dom";
 import { useState } from "react";
 import type { StudentDto } from "../../../shared/types";
+import { StudentQrCard } from "./StudentQrCard";
 import { ErrorPanel, LoadingState, QrDialog, StatusChip } from "../components/Feedback";
 import { StudentForm } from "../features/students/StudentForm";
 import { ApiClientError, api, type QrDelivery } from "../services/api";
@@ -44,8 +45,9 @@ export function StudentProfilePage() {
       <Metric label="Promedio" value={metrics?.average !== undefined ? String(metrics.average) : "Sin datos"} hint={metrics?.performance ?? "Aún no hay notas suficientes"} />
       <Metric label="Actividades calificadas" value={`${gradeRows.length}`} hint="Calificaciones almacenadas" />
     </section>
+    <StudentQrCard studentId={id} name={item.fullName} code={item.document} active={active} />
     <section className="dashboard-columns">
-      <article className="content-card"><h2>Datos registrados</h2><dl className="details-list"><div><dt>Nombre completo</dt><dd>{item.fullName}</dd></div><div><dt>Código de asistencia</dt><dd>{item.document}</dd></div><div><dt>Curso / grupo</dt><dd>{item.courseGroup?.label || "No asignado"}</dd></div><div><dt>Código QR</dt><dd>{active ? `Versión ${item.qrVersion} · token opaco; se entrega al generarlo y no se conserva en texto recuperable.` : "El código anterior fue invalidado. Reactiva al estudiante y emite un QR nuevo."}</dd></div></dl></article>
+      <article className="content-card"><h2>Datos registrados</h2><dl className="details-list"><div><dt>Nombre completo</dt><dd>{item.fullName}</dd></div><div><dt>Código de asistencia</dt><dd>{item.document}</dd></div><div><dt>Curso / grupo</dt><dd>{item.courseGroup?.label || "No asignado"}</dd></div><div><dt>Código QR</dt><dd>{active ? `Versión ${item.qrVersion} · se ve y se descarga en la tarjeta de arriba.` : "El código anterior fue invalidado. Reactiva al estudiante y emite un QR nuevo."}</dd></div></dl></article>
       <article className="content-card"><h2>Resumen académico</h2><p className="helper-text">{metrics?.average !== undefined ? `Promedio ${metrics.average}${metrics.performance ? ` (${metrics.performance})` : ""} en las calificaciones disponibles. ` : "No hay calificaciones suficientes para calcular un promedio. "}{metrics?.totalSessions ? `${metrics.totalSessions} sesiones cerradas consideradas; asistencia ${metrics.attendancePercent ?? "sin dato"}%.` : "No hay sesiones cerradas para calcular asistencia."}</p><p className="helper-text">Esta síntesis describe los registros consultados; no atribuye causalidad entre asistencia y rendimiento.</p><Link className="student-name" to={`/observations?studentId=${encodeURIComponent(id)}`}>Abrir seguimientos del estudiante</Link></article>
     </section>
 

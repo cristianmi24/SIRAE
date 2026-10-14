@@ -4,7 +4,7 @@ import type { PaginatedResult, StudentDto } from "../../../shared/types.js";
 import { AuditLog, CourseGroup, Enrollment, Student } from "../models/index.js";
 import type { AuthContext } from "./auth-context.js";
 import { AppError, conflict, notFound } from "../utils/errors.js";
-import { createOpaqueQrToken, createQrDataUrl, createQrPayload, hashQrPayload } from "../utils/qr.js";
+import { createOpaqueQrToken, createQrDataUrl, createQrPayload, hashQrPayload, openQrToken, sealQrToken } from "../utils/qr.js";
 import { escapeRegex, normalizeForLookup } from "../utils/text.js";
 import type { StudentInput, StudentListQuery, StudentUpdateInput } from "../validators/students.js";
 
@@ -173,6 +173,7 @@ export async function createStudent(
     phone: input.phone || undefined,
     active: true,
     qrTokenHash: hashQrPayload(payload),
+    qrTokenEnc: sealQrToken(token),
     qrVersion: 1,
     createdBy: context.user.id,
   });
@@ -315,6 +316,7 @@ export async function regenerateStudentQr(
   const payload = createQrPayload(token);
   const oldVersion = student.qrVersion;
   student.qrTokenHash = hashQrPayload(payload);
+  student.qrTokenEnc = sealQrToken(token);
   student.qrVersion += 1;
   await student.save();
   await audit(context, "STUDENT_QR_REGENERATED", student._id, { qrVersion: oldVersion }, { qrVersion: student.qrVersion });
@@ -322,14 +324,22 @@ export async function regenerateStudentQr(
   return { student: await mapStudent(student), qr: await newQrDelivery(token, student.qrVersion) };
 }
 
+// Devuelve el QR del estudiante para mostrarlo y descargarlo. Los estudiantes creados antes de guardarse
+// el token no lo tienen: para ellos hay que generar un QR nuevo una vez (Regenerar QR).
 export async function getStudentQrStatus(context: AuthContext, id: string) {
-  const student = await Student.findOne({ _id: studentId(id), institutionId: context.institution.id });
+  const student = await Student.findOne({ _id: studentId(id), institutionId: context.institution.id }).select("+qrTokenEnc");
   if (!student) throw notFound("No se encontró el estudiante solicitado.");
   assertStudentScope(context, student);
-  return {
-    qrVersion: student.qrVersion,
-    requiresRegeneration: true,
-    message:
-      "Por privacidad, el QR no se conserva en texto recuperable. Regénéralo para volver a mostrarlo o imprimirlo.",
-  };
+  const token = openQrToken(student.qrTokenEnc);
+  if (!token || !student.active) {
+    return {
+      available: false,
+      qrVersion: student.qrVersion,
+      requiresRegeneration: true,
+      message: student.active
+        ? "Este QR se creó antes de poder guardarse. Genera uno nuevo una sola vez: el QR impreso anterior dejará de funcionar."
+        : "El estudiante está inactivo. Reactívalo para ver su QR.",
+    };
+  }
+  return { available: true, qrVersion: student.qrVersion, requiresRegeneration: false, dataUrl: await createQrDataUrl(createQrPayload(token)), message: "" };
 }

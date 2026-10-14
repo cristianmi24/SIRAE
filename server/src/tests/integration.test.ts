@@ -425,6 +425,12 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
       const stranger = await register("docente-ajeno-qr", "PERSONAL");
       expect((await post(stranger, "/api/students/qr-lookup", { tokenHash })).status).toBe(404);
       expect(await Attendance.countDocuments({ studentId: created.body.student.id })).toBe(before);
+      // El QR del estudiante se puede volver a ver (perfil) sin cambiarlo, y otra aula no lo ve.
+      const shown = await agent.get(`/api/students/${created.body.student.id}/qr`);
+      expect(shown.body).toMatchObject({ available: true, qrVersion: 1 });
+      expect(String(shown.body.dataUrl)).toMatch(/^data:image\/png;base64,/);
+      expect((await agent.get(`/api/students/${created.body.student.id}/qr`)).body.dataUrl).toBe(shown.body.dataUrl);
+      expect((await stranger.get(`/api/students/${created.body.student.id}/qr`)).status).toBe(404);
       // Una clase de otro curso rechaza al estudiante.
       const wrong = await scan(otherSession);
       expect(wrong.status).toBe(409);

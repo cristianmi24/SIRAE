@@ -32,6 +32,7 @@ export function QrCameraView({ scanner, title, idle, children }: { scanner: Scan
       <div className="camera-guide" aria-hidden="true" />
       <div className="camera-bottombar">
         {children}
+        {scanner.zoom && <label className="camera-zoom"><span>Zoom</span><input type="range" min={scanner.zoom.min} max={scanner.zoom.max} step={scanner.zoom.step} value={scanner.zoom.value} onChange={(event) => void scanner.setZoom(Number(event.target.value))} aria-label="Acercar o alejar la cámara" /><span>{scanner.zoom.value.toFixed(1)}×</span></label>}
         <p className="camera-hint">Centra el código QR dentro del recuadro y mantenlo quieto.</p>
         <div className="dialog-actions"><button type="button" className="button button-secondary" onClick={stop}><CameraOff size={17} /> Detener cámara</button></div>
       </div>
