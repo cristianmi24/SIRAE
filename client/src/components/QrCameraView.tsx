@@ -8,17 +8,26 @@ type Scanner = ReturnType<typeof useQrScanner>;
 // con un recuadro guía; al apagarse vuelve a su lugar en la página. La lectura la hace useQrScanner.
 export function QrCameraView({ scanner, title, idle, children }: { scanner: Scanner; title: string; idle?: ReactNode; children?: ReactNode }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const { active, stop } = scanner;
   useEffect(() => {
     if (!active) return;
     document.body.classList.add("camera-open");
     closeRef.current?.focus();
+    // En celulares y tabletas se usa la pantalla completa del dispositivo (oculta la barra del navegador).
+    // Si el navegador no lo permite (por ejemplo, Safari en iPhone), la vista igual ocupa toda la ventana.
+    const touch = window.matchMedia?.("(pointer: coarse)").matches;
+    if (touch && frameRef.current?.requestFullscreen && !document.fullscreenElement) void frameRef.current.requestFullscreen({ navigationUI: "hide" }).catch(() => undefined);
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") stop(); };
     window.addEventListener("keydown", onKey);
-    return () => { document.body.classList.remove("camera-open"); window.removeEventListener("keydown", onKey); };
+    return () => {
+      document.body.classList.remove("camera-open");
+      window.removeEventListener("keydown", onKey);
+      if (document.fullscreenElement && document.fullscreenElement === frameRef.current) void document.exitFullscreen().catch(() => undefined);
+    };
   }, [active, stop]);
   // El mismo elemento <video> se mantiene siempre montado: la cámara se conecta a él antes de ampliarse.
-  return <div className={`camera-frame ${active ? "is-expanded" : ""}`} hidden={!active && !idle} {...(active ? { role: "dialog", "aria-modal": true, "aria-label": title } : {})}>
+  return <div ref={frameRef} className={`camera-frame ${active ? "is-expanded" : ""}`} hidden={!active && !idle} {...(active ? { role: "dialog", "aria-modal": true, "aria-label": title } : {})}>
     <video ref={scanner.videoRef} muted playsInline hidden={!active} aria-label="Cámara para escanear códigos QR" />
     {!active && idle}
     {active && <div className="camera-overlay">
