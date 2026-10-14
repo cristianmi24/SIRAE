@@ -71,6 +71,8 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
   const [active, setActive] = useState(false);
   const [error, setError] = useState("");
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
   const stop = useCallback(() => {
     window.clearTimeout(idleRef.current);
@@ -78,6 +80,7 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
     stopLoopRef.current = null;
     releaseVideo(videoRef.current, streamRef.current);
     streamRef.current = null;
+    setTorchSupported(false); setTorchOn(false);
     setActive(false);
   }, []);
 
@@ -112,6 +115,7 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
       // Enfoque continuo cuando el dispositivo lo permite.
       const track = stream.getVideoTracks()[0];
       const caps = (track?.getCapabilities?.() ?? {}) as { focusMode?: string[] };
+      setTorchSupported(Boolean((caps as { torch?: boolean }).torch));
       if (caps.focusMode?.includes("continuous")) await track!.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] }).catch(() => undefined);
       video.srcObject = stream;
       video.setAttribute("playsinline", "true");
@@ -148,6 +152,14 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
     }
   }, [armIdle, handle, stop]);
 
+  // Linterna (si la cámara la tiene): ayuda a leer QR en salones con poca luz.
+  const toggleTorch = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn;
+    try { await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] }); setTorchOn(next); } catch { setTorchSupported(false); }
+  }, [torchOn]);
+
   // Pasa a la siguiente cámara (por ejemplo, de la frontal a la trasera).
   const switchCamera = useCallback(async () => {
     if (cameras.length < 2) return;
@@ -165,5 +177,25 @@ export function useQrScanner(onResult: (text: string) => void, options: { stopOn
     return () => { document.removeEventListener("visibilitychange", hide); window.removeEventListener("pagehide", stop); stop(); };
   }, [stop]);
 
-  return { videoRef, active, error, start, stop, armIdle, cameras: cameras.length, switchCamera };
+  return { videoRef, active, error, start, stop, armIdle, cameras: cameras.length, switchCamera, torchSupported, torchOn, toggleTorch };
+}
+
+/** Lee un QR desde una foto o captura de pantalla (como hacen los lectores desde la galería). */
+export async function decodeQrFromImage(file: File): Promise<string | null> {
+  const detector = await nativeDetector();
+  if (detector) {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement("canvas"); canvas.width = bitmap.width; canvas.height = bitmap.height;
+      canvas.getContext("2d")?.drawImage(bitmap, 0, 0);
+      const codes = await (detector as unknown as { detect: (source: CanvasImageSource) => Promise<{ rawValue: string }[]> }).detect(canvas);
+      if (codes[0]?.rawValue) return codes[0].rawValue;
+    } catch { /* se intenta con ZXing */ }
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const [{ BrowserQRCodeReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([import("@zxing/browser"), import("@zxing/library")]);
+    const hints = new Map<unknown, unknown>([[DecodeHintType.TRY_HARDER, true], [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE]]]);
+    return (await new BrowserQRCodeReader(hints as never).decodeFromImageUrl(url)).getText();
+  } catch { return null; } finally { URL.revokeObjectURL(url); }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { Camera, CameraOff, SwitchCamera, X } from "lucide-react";
+import { Camera, CameraOff, Flashlight, FlashlightOff, SwitchCamera, X } from "lucide-react";
 import type { useQrScanner } from "../lib/use-qr-scanner";
 
 type Scanner = ReturnType<typeof useQrScanner>;
@@ -25,6 +25,7 @@ export function QrCameraView({ scanner, title, idle, children }: { scanner: Scan
       <div className="camera-topbar">
         <span className="camera-dot" aria-hidden="true" />
         <span>{title}</span>
+        {scanner.torchSupported && <button type="button" className="camera-icon-button" onClick={() => void scanner.toggleTorch()} aria-pressed={scanner.torchOn} aria-label={scanner.torchOn ? "Apagar linterna" : "Encender linterna"} title="Linterna">{scanner.torchOn ? <FlashlightOff size={20} /> : <Flashlight size={20} />}</button>}
         {scanner.cameras > 1 && <button type="button" className="camera-icon-button" onClick={() => void scanner.switchCamera()} aria-label="Cambiar de cámara" title="Cambiar de cámara"><SwitchCamera size={20} /></button>}
         <button ref={closeRef} type="button" className="camera-icon-button" onClick={stop} aria-label="Cerrar cámara" title="Cerrar cámara (Esc)"><X size={22} /></button>
       </div>

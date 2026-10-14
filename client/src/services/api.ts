@@ -114,6 +114,7 @@ export const api = {
   getPlatformOverview: () => request<PlatformOverviewDto>("/api/platform/overview"),
   getPlatformAnalytics: (days: number) => request<AnalyticsSummaryDto>(`/api/platform/analytics?days=${days}`),
   createTeacherAccount: (input: { name: string; email: string; password: string; courseGroupIds: string[] }) => request<{ item: { membershipId: string; name: string; email: string; courses: number }; message: string }>("/api/learning/institution/teachers", json("POST", input)),
+  lookupStudentByQr: (tokenHash: string) => request<{ item: StudentDto }>("/api/students/qr-lookup", json("POST", { tokenHash })),
   getPlatformAdmins: () => request<PlatformAdminsDto>("/api/platform/admins"),
   getPlatformRealtime: () => request<AnalyticsRealtimeDto>("/api/platform/analytics/realtime"),
   createPlatformInstitution: (input: { name: string; type: "INSTITUTION" | "PERSONAL"; adminEmail?: string; limits?: PlatformLimitsInput }) => request<{ item: { id: string; name: string; adminStatus: "NONE" | "ASSIGNED" | "INVITED" } }>("/api/platform/institutions", json("POST", input)),

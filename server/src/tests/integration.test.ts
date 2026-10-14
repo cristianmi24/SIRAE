@@ -416,6 +416,15 @@ describe.skipIf(!baseUri)("API de SIRAE (integración)", () => {
       const { Attendance } = await import("../models/learning.js");
       const rows = await Attendance.find({ studentId: created.body.student.id }).lean();
       expect(rows.map((row) => String(row.subjectId)).sort()).toEqual([physics, chemistry].sort());
+      // Lector de prueba: identifica al estudiante por su QR sin registrar asistencia y sin filtrar a otras aulas.
+      const before = await Attendance.countDocuments({ studentId: created.body.student.id });
+      const lookup = await post(agent, "/api/students/qr-lookup", { tokenHash });
+      expect(lookup.status, JSON.stringify(lookup.body)).toBe(200);
+      expect(lookup.body.item).toMatchObject({ fullName: "Laura Qr", document: created.body.student.document });
+      expect((await post(agent, "/api/students/qr-lookup", { tokenHash: "a".repeat(64) })).status).toBe(404);
+      const stranger = await register("docente-ajeno-qr", "PERSONAL");
+      expect((await post(stranger, "/api/students/qr-lookup", { tokenHash })).status).toBe(404);
+      expect(await Attendance.countDocuments({ studentId: created.body.student.id })).toBe(before);
       // Una clase de otro curso rechaza al estudiante.
       const wrong = await scan(otherSession);
       expect(wrong.status).toBe(409);

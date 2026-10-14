@@ -136,6 +136,15 @@ export async function getStudent(context: AuthContext, id: string): Promise<Stud
   return mapStudent(student);
 }
 
+// Lector de prueba: identifica a un estudiante por el hash de su QR sin registrar asistencia.
+export async function lookupStudentByQr(context: AuthContext, tokenHash: string): Promise<StudentDto> {
+  if (!/^[a-f0-9]{64}$/i.test(tokenHash)) throw notFound("Este QR no es un código de estudiante de SIRAE.");
+  const student = await Student.findOne({ institutionId: context.institution.id, qrTokenHash: tokenHash.toLowerCase() });
+  if (!student) throw notFound("Este QR no corresponde a ningún estudiante de tu aula.");
+  assertStudentScope(context, student);
+  return mapStudent(student);
+}
+
 export async function createStudent(
   context: AuthContext,
   input: StudentInput,

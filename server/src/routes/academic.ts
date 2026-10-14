@@ -4,6 +4,7 @@ import {
   createStudentController,
   deactivateStudentController,
   getStudentController,
+  qrLookupController,
   listCourseGroupsController,
   listStudentsController,
   reactivateStudentController,
@@ -28,6 +29,7 @@ studentRouter.get("/", listStudentsController);
 studentRouter.get("/qr-export", exportStudentQrsController);
 studentRouter.get("/codes.pdf", studentCodesPdfController);
 studentRouter.post("/delete-all", requireRole("ADMIN"), deleteEverythingController);
+studentRouter.post("/qr-lookup", qrLookupController);
 studentRouter.post("/", createStudentController);
 studentRouter.get("/:id", getStudentController);
 studentRouter.patch("/:id", updateStudentController);

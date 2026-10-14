@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { StudentQrReader } from "./StudentQrReader";
 import QRCode from "qrcode";
 import { Camera, CheckCircle2, Download, QrCode, RefreshCw } from "lucide-react";
 import { CameraIdle, QrCameraView } from "../components/QrCameraView";
@@ -17,6 +18,7 @@ function createTestPayload() {
 type Verification = { ok: boolean; text: string };
 
 export function QrTestPage() {
+  const [mode, setMode] = useState<"students" | "sample">("students");
   const [qr, setQr] = useState("");
   const [expectedPayload, setExpectedPayload] = useState("");
   const [qrError, setQrError] = useState("");
@@ -44,7 +46,12 @@ export function QrTestPage() {
   const scanner = useQrScanner(handleResult, { stopOnRead: true });
 
   return <section className="page">
-    <div className="page-heading"><div><h1><QrCode size={25} aria-hidden="true" /> Probar lector QR</h1><p className="page-subtitle">Comprueba la lectura de la cámara antes de usar los QR de la lista.</p></div></div>
+    <div className="page-heading"><div><h1><QrCode size={25} aria-hidden="true" /> Probar lector QR</h1><p className="page-subtitle">Comprueba la lectura de la cámara y de los QR de tus estudiantes.</p></div></div>
+    <div className="segmented" role="tablist" aria-label="Tipo de prueba">
+      <button role="tab" aria-selected={mode === "students"} className={mode === "students" ? "is-active" : ""} onClick={() => setMode("students")}>QR de estudiantes</button>
+      <button role="tab" aria-selected={mode === "sample"} className={mode === "sample" ? "is-active" : ""} onClick={() => setMode("sample")}>QR de prueba</button>
+    </div>
+    {mode === "students" ? <StudentQrReader /> : <>
     <p className="notice notice-info" role="note">Este QR usa el mismo formato que los de la lista, pero con un token ficticio generado en este dispositivo. La prueba no consulta el servidor ni crea o modifica asistencias.</p>
 
     <div className="attendance-columns">
@@ -69,5 +76,6 @@ export function QrTestPage() {
         </div>
       </article>
     </div>
+    </>}
   </section>;
 }

@@ -1,4 +1,5 @@
 import PDFDocument from "pdfkit";
+import { z } from "zod";
 import * as archiver from "archiver";
 import type { NextFunction, Request, Response } from "express";
 import { createQrDataUrl, createOpaqueQrToken, createQrPayload, hashQrPayload } from "../utils/qr.js";
@@ -8,6 +9,7 @@ import {
   createStudent,
   deactivateStudent,
   getStudent,
+  lookupStudentByQr,
   getStudentQrStatus,
   listStudents,
   reactivateStudent,
@@ -57,6 +59,16 @@ export async function listStudentsController(request: Request, response: Respons
 export async function createStudentController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
     response.status(201).json(await createStudent(requireAuthContext(request), studentInputSchema.parse(request.body)));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function qrLookupController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const body = z.object({ tokenHash: z.string().regex(/^[a-f0-9]{64}$/i) }).parse(request.body);
+    response.setHeader("Cache-Control", "private, no-store");
+    response.json({ item: await lookupStudentByQr(requireAuthContext(request), body.tokenHash) });
   } catch (error) {
     next(error);
   }

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileSpreadsheet, KeyRound, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
+import { Download, FileSpreadsheet, KeyRound, Pencil, Plus, ScanLine, Search, Trash2, Users } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMemo, useState } from "react";
 import type { StudentDto } from "../../../shared/types";
@@ -43,6 +43,7 @@ export function StudentsPage() {
     <header className="page-heading">
       <div><h1>Estudiantes</h1><p className="page-subtitle">Solo se registran nombres y apellidos. Cada estudiante recibe un código único para registrar su asistencia.</p><PlanUsage compact /></div>
       <div className="page-actions">
+        <Link className="button button-secondary" to="/attendance/qr-test"><ScanLine size={18} /> Probar lector QR</Link>
         <Link className="button button-secondary" to="/students/import"><FileSpreadsheet size={18} /> Cargar desde Excel</Link>
         <button className="button button-primary" onClick={() => setCreating(true)}><Plus size={18} /> Nuevo estudiante</button>
       </div>
