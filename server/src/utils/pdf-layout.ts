@@ -1,5 +1,5 @@
 import PDFDocument from "pdfkit";
-import { addEdutlanWatermark, drawSiraeLogo } from "./pdf-branding.js";
+import { drawSiraeLogo } from "./pdf-branding.js";
 
 // Paleta de SIRAE para los PDF.
 export const C = { ink: "#1B2559", text: "#2E3866", muted: "#6B7399", line: "#E3E7F3", soft: "#F4F6FC", blue: "#4361EE", blueBg: "#EAEEFE", green: "#0F9D6E", amber: "#E08A00", coral: "#E5484D", slate: "#A3ABD4" };
@@ -10,7 +10,7 @@ type Cell = string | { text: string; bold?: boolean; color?: string; note?: stri
 /**
  * Generador de documentos PDF de SIRAE (archivo real, no captura de pantalla).
  * Encabezado con logo, secciones numeradas, métricas, tablas con salto de página,
- * pie con número de página y marca "by Edutlan" en cada hoja.
+ * pie con número de página en cada hoja.
  */
 export class PdfReport {
   readonly doc: PDFKit.PDFDocument;
@@ -29,7 +29,6 @@ export class PdfReport {
     });
     this.right = this.doc.page.width - 48;
     this.width = this.right - this.left;
-    addEdutlanWatermark(this.doc);
     this.header();
   }
 

@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ErrorPanel, LoadingState } from "../components/Feedback";
-import { Byline } from "../components/Byline";
 import { DownloadPdfButton } from "../components/DownloadPdfButton";
 import { api, type StudentReportDto } from "../services/api";
 import { ReportHeader, ReportSection, ReportEmpty, fmtGrade } from "../features/reports/ReportParts";
@@ -81,7 +80,6 @@ export function StudentReportPage() {
         {text ? <p className="report-synthesis">{text}</p> : <ReportEmpty>Todavía no hay datos suficientes para escribir una síntesis.</ReportEmpty>}
       </ReportSection>
       <footer className="report-footer"><span>Documento confidencial. Acceso según los permisos de {d.institutionName}.</span><span>{d.documentNumber}</span></footer>
-      <div className="report-watermark"><Byline variant="print" /></div>
     </article>
   </div>;
 }

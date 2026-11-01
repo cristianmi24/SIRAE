@@ -3,7 +3,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Clock3, Lock, LogOut } from "lucide-react";
 import { api, type PublicLinkInfoDto } from "../services/api";
-import { Byline } from "../components/Byline";
 
 function useCountdown(target?: string, serverTime?: string) {
   const [now, setNow] = useState(Date.now());
@@ -73,6 +72,5 @@ export function PublicAttendancePage() {
     <header className="public-header"><img className="public-logo" src="/sirae-logo.webp" alt="SIRAE" width={150} height={98} />{data?.institution && <span>{data.institution}</span>}</header>
     <section className="public-card">{body}</section>
     <p className="public-foot">SIRAE no usa tu ubicación, tu cámara ni datos biométricos. <Link to="/legal#asistencia">Cómo funciona</Link></p>
-    <Byline />
   </main>;
 }

@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Send } from "lucide-react";
 import { api, ApiClientError, type ComplaintInput, type ComplaintRole, type ComplaintType } from "../services/api";
 import { complaintRoleLabel, complaintTypeLabel } from "../features/complaints/labels";
-import { Byline } from "../components/Byline";
 
 const empty = { type: "QUEJA" as ComplaintType, requesterRole: "PADRE_ACUDIENTE" as ComplaintRole, name: "", email: "", phone: "", institutionName: "", studentName: "", message: "", website: "" };
 
@@ -47,7 +46,7 @@ export function ComplaintPage() {
         {send.error && <p className="notice notice-error form-full" role="alert">{send.error instanceof Error ? send.error.message : "No se pudo enviar la solicitud."}</p>}
         <div className="form-full"><button className="button button-primary" disabled={send.isPending || !consent}><Send size={17} /> {send.isPending ? "Enviando…" : "Enviar solicitud"}</button></div>
       </form>}
-      <footer className="legal-footer"><Byline /><Link to="/">Volver a SIRAE</Link></footer>
+      <footer className="legal-footer"><Link to="/">Volver a SIRAE</Link></footer>
     </article>
   </main>;
 }

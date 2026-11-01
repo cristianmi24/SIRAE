@@ -17,7 +17,6 @@ import {
   updateStudent,
 } from "../services/students.js";
 import { AppError } from "../utils/errors.js";
-import { addEdutlanWatermark } from "../utils/pdf-branding.js";
 import { renderCodesPdf } from "../utils/report-pdfs.js";
 import { deleteCourse, deleteEverything, deleteStudent } from "../services/cleanup.js";
 import { studentInputSchema, studentListQuerySchema, studentUpdateSchema } from "../validators/students.js";
@@ -180,7 +179,6 @@ export async function exportStudentQrsController(request: Request, response: Res
       response.setHeader("Cache-Control", "private, no-store");
       const document = new PDFDocument({ size: "LETTER", margin: 36, info: { Title: "Códigos QR de estudiantes", Author: "SIRAE" } });
       document.pipe(response);
-      addEdutlanWatermark(document);
       files.forEach((file, index) => {
         if (index > 0 && index % 4 === 0) document.addPage();
         const position = index % 4;

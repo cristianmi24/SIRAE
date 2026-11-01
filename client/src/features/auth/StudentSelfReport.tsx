@@ -1,7 +1,6 @@
 import { LogOut } from "lucide-react";
 import { api, type StudentSelfReportDto } from "../../services/api";
 import { DownloadPdfButton } from "../../components/DownloadPdfButton";
-import { Byline } from "../../components/Byline";
 import { ReportEmpty, ReportSection, fmtGrade } from "../reports/ReportParts";
 
 // Historial del estudiante en formato de informe: asistencia (días y horas) y notas hasta hoy.
@@ -30,7 +29,6 @@ export function StudentSelfReport({ report: r, query, onExit }: { report: Studen
         <div className="report-highlight"><span>Promedio del periodo más reciente</span><strong>{r.grades.average === undefined ? "Sin datos" : `${fmtGrade(r.grades.average)}${r.grades.performance ? ` · ${r.grades.performance}` : ""}`}</strong></div>
       </ReportSection>
       <footer className="report-footer"><span>Consulta personal y de solo lectura. Si ves un error, habla con tu docente. <a className="no-print" href="/legal#estudiantes" target="_blank" rel="noreferrer">Privacidad</a></span><span>{r.student.code}</span></footer>
-      <div className="report-watermark"><Byline variant="print" /></div>
     </article>
   </main>;
 }

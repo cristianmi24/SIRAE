@@ -10,7 +10,6 @@ import { StudentSelfReport } from "../features/auth/StudentSelfReport";
 import type { StudentSelfReportDto } from "../services/api";
 import { useTheme } from "../lib/ui-hooks";
 import { AppShell } from "../components/AppShell";
-import { Byline } from "../components/Byline";
 import { LoadingState } from "../components/Feedback";
 import { BrandLoader } from "../components/Loading";
 import { api, ApiClientError } from "../services/api";
@@ -141,7 +140,7 @@ function SignInScreen() {
         <article id="seguridad"><ShieldCheck size={21} aria-hidden="true" /><h2>Privacidad primero</h2><p>Sin documentos ni datos biométricos de los estudiantes. Ellos solo pueden ver su historial, nunca editarlo. <Link to="/legal">Lee cómo protegemos los datos</Link>.</p></article>
       </section>
 
-      <footer className="marketing-footer"><Brand /><Byline /><span>© {new Date().getFullYear()} SIRAE · Sistema de Identificación y Registro de Asistencia Educativa.</span><Link to="/legal">Términos, privacidad y seguridad</Link><Link to="/quejas">Quejas y solicitudes</Link></footer>
+      <footer className="marketing-footer"><Brand /><span>© {new Date().getFullYear()} SIRAE · Sistema de Identificación y Registro de Asistencia Educativa.</span><Link to="/legal">Términos, privacidad y seguridad</Link><Link to="/quejas">Quejas y solicitudes</Link></footer>
     </main>
   );
 }

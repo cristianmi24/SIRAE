@@ -7,7 +7,6 @@ import { api } from "../services/api";
 import { useHotkeys, useOnlineStatus, useTheme } from "../lib/ui-hooks";
 import { CommandPalette, ShortcutsHelp } from "./CommandPalette";
 import { StatusChip } from "./Feedback";
-import { Byline } from "./Byline";
 import { TopProgress } from "./Loading";
 import { adminItemsFor, breadcrumbsFor, home, monitoring, navItemsFor, platformAdminsItem, platformComplaints, platformInstitutions, platformTeachers, platformWebStats, sections, type NavItem } from "./navigation";
 
@@ -95,7 +94,6 @@ export function AppShell({ user, children }: { user: AuthUserDto; children: Reac
         <WorkspaceSwitcher user={user} />
         <button type="button" className="logout-button" onClick={() => logout.mutate()} disabled={logout.isPending}><LogOut size={17} aria-hidden="true" /><span>{logout.isPending ? "Cerrando…" : "Cerrar sesión"}</span></button>
         <Link to="/legal" className="sidebar-legal">Términos y privacidad</Link>
-        <Byline variant="dark" />
       </div>
     </aside>
 
@@ -103,7 +101,7 @@ export function AppShell({ user, children }: { user: AuthUserDto; children: Reac
       <aside className="drawer" role="dialog" aria-modal="true" aria-label="Menú" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head"><span className="brand-card"><img className="brand-logo" src="/sirae-logo.webp" alt="SIRAE" width={128} height={83} /></span><button className="icon-only drawer-close" onClick={() => setDrawerOpen(false)} aria-label="Cerrar menú" title="Cerrar menú"><X size={20} /></button></div>
         <NavContent platformAdmin={platformAdmin} adminNav={adminNav} onNavigate={() => setDrawerOpen(false)} />
-        <div className="sidebar-footer"><div className="user-card"><span className="avatar" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</span><div><strong>{user.name}</strong></div></div><button type="button" className="logout-button" onClick={() => logout.mutate()}><LogOut size={17} aria-hidden="true" /><span>Cerrar sesión</span></button><Byline variant="dark" /></div>
+        <div className="sidebar-footer"><div className="user-card"><span className="avatar" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</span><div><strong>{user.name}</strong></div></div><button type="button" className="logout-button" onClick={() => logout.mutate()}><LogOut size={17} aria-hidden="true" /><span>Cerrar sesión</span></button></div>
       </aside>
     </div>}
 

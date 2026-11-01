@@ -1,7 +1,6 @@
 import { ArrowLeft, ArrowUp, Ban, Eye, FileLock2, KeyRound, ShieldCheck, Smartphone } from "lucide-react";
 import { ACCOUNT_LIMITS, ADMIN_CONTACT_EMAIL } from "../../../shared/limits";
 import { Link } from "react-router-dom";
-import { Byline } from "../components/Byline";
 
 const UPDATED = "12 de octubre de 2026";
 const sections = [
@@ -152,7 +151,7 @@ export function LegalPage() {
           <p>Cualquier persona puede enviar una queja, un reclamo o una solicitud (incluida la eliminación de datos) en el formulario de <Link to="/quejas">quejas y solicitudes</Link>. Cada envío recibe un número de radicado y llega directamente al administrador de la plataforma, que responde al correo indicado.</p>
         </section>
         <a className="legal-top" href="#top"><ArrowUp size={16} aria-hidden="true" /> Volver al inicio</a>
-        <footer className="legal-footer"><Byline /><span>SIRAE · Sistema de Identificación y Registro de Asistencia Educativa</span></footer>
+        <footer className="legal-footer"><span>SIRAE · Sistema de Identificación y Registro de Asistencia Educativa</span></footer>
       </article>
     </div>
   </main>;

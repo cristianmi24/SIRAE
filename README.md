@@ -36,7 +36,7 @@ SIRAE es una aplicación web para docentes. Permite cargar estudiantes desde Exc
 
 ### Resultados
 - **Análisis** de asistencia y rendimiento, con alertas. Que dos datos coincidan no se presenta como causa y efecto.
-- **Reportes PDF:** informe individual y **planilla de notas por curso**, con el logo de SIRAE y la marca "by Edutlan".
+- **Reportes PDF:** informe individual y **planilla de notas por curso**, con el logo de SIRAE.
 - **Consulta del estudiante** desde la pantalla de inicio: historial de asistencias (día, clase, hora) y notas.
 - **Perfil de monitoreo** para el administrador: docentes, aulas, estudiantes y la última vez que cada uno usó el sistema. Este perfil no modifica datos.
 
@@ -134,11 +134,7 @@ Los términos, la política de privacidad y las medidas de seguridad están expl
 
 ## Créditos
 
-Desarrollado por **Cristian Miguel Peñata Andrade**, con el respaldo de **Edutlan** (Education · Technology · Language).
-
-<p>
-  <img src="public/edutlan-logo.webp" alt="Edutlan" width="140" />
-</p>
+Desarrollado por **Cristian Miguel Peñata Andrade** y **Manuel Fernando Caro Piñeres**.
 
 ## Licencia
 

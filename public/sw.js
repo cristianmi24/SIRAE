@@ -1,9 +1,9 @@
 // v2: solo se guardan en caché los archivos con hash de producción (/assets/).
 // La versión anterior también guardaba módulos de desarrollo (/src/…, /node_modules/.vite/…),
 // lo que mezclaba versiones de React tras una recarga. Al activarse, se borran esas cachés.
-const SHELL_CACHE = "aulanexo-shell-v4";
-const ASSET_CACHE = "aulanexo-assets-v4";
-const SHELL_URLS = ["/manifest.webmanifest", "/sirae-mark.webp", "/sirae-logo.webp", "/edutlan-logo.webp"];
+const SHELL_CACHE = "aulanexo-shell-v5";
+const ASSET_CACHE = "aulanexo-assets-v5";
+const SHELL_URLS = ["/manifest.webmanifest", "/sirae-mark.webp", "/sirae-logo.webp"];
 const isDevHost = ["localhost", "127.0.0.1", "[::1]"].includes(self.location.hostname);
 
 self.addEventListener("install", (event) => {

@@ -794,17 +794,7 @@ kbd { display: inline-flex; align-items: center; min-width: 1.6em; justify-conte
 @media print { .code-cards { grid-template-columns: repeat(3, 1fr); } }
 
 .marketing-actions { display: flex; align-items: center; gap: .5rem; }
-
-/* Crédito "by Edutlan" */
-.byline { display: inline-flex; align-items: center; gap: .35rem; color: var(--muted); font-size: .74rem; font-weight: 700; }
-.byline img { height: 26px; width: auto; }
-.byline-dark { margin-top: .6rem; padding: .25rem .6rem; border-radius: 9px; background: #fff; color: #5b6488; align-self: flex-start; }
-.byline-dark img { height: 22px; }
-.public-page .byline { margin-top: -.4rem; }
-.report-watermark { display: flex; justify-content: center; margin-top: 1rem; opacity: .75; }
-.report-watermark .byline img { height: 20px; }
 @media print {
-  .report-watermark { position: fixed; bottom: 0; left: 0; right: 0; margin: 0; opacity: .6; }
   .report-sheet { padding-bottom: 28px; }
 }
 
@@ -824,8 +814,8 @@ kbd { display: inline-flex; align-items: center; min-width: 1.6em; justify-conte
 .public-header span { color: var(--muted); font-size: .9rem; font-weight: 700; }
 :root[data-theme="dark"] .brand-on-light .brand-logo, :root[data-theme="dark"] .public-logo { padding: .3rem .5rem; border-radius: 12px; background: #fff; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .brand-on-light .brand-logo, :root:not([data-theme="light"]) .public-logo { padding: .3rem .5rem; border-radius: 12px; background: #fff; } }
-:root[data-theme="dark"] .byline img, :root[data-theme="dark"] .report-logo { background: #fff; border-radius: 6px; padding: 2px 4px; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .byline img, :root:not([data-theme="light"]) .report-logo { background: #fff; border-radius: 6px; padding: 2px 4px; } }
+:root[data-theme="dark"] .report-logo { background: #fff; border-radius: 6px; padding: 2px 4px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .report-logo { background: #fff; border-radius: 6px; padding: 2px 4px; } }
 
 /* Acceso: docente / estudiante y clave visible */
 .audience-tabs { display: flex; width: 100%; margin-bottom: 1.1rem; }

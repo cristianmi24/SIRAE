@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ErrorPanel, LoadingState } from "../components/Feedback";
-import { Byline } from "../components/Byline";
 import { DownloadPdfButton } from "../components/DownloadPdfButton";
 import { api } from "../services/api";
 import { ReportEmpty, ReportHeader, ReportSection, fmtGrade } from "../features/reports/ReportParts";
@@ -38,7 +37,6 @@ export function CourseGradesReportPage() {
         {low && <p className="report-note">Las notas resaltadas están en el nivel {low.label} ({low.min} a {low.max}).</p>}
       </ReportSection>
       <footer className="report-footer"><span>Documento confidencial. Acceso según los permisos de {d.institutionName}.</span><span>Curso {d.course.label}</span></footer>
-      <div className="report-watermark"><Byline variant="print" /></div>
     </article>
   </div>;
 }
