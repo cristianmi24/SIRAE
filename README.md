@@ -134,7 +134,7 @@ Los términos, la política de privacidad y las medidas de seguridad están expl
 
 ## Créditos
 
-Desarrollado por **Cristian Miguel Peñata Andrade** y **Manuel Fernando Caro Piñeres**.
+Desarrollado por **Cristian Miguel Peñata Andrade**.
 
 ## Licencia
 
